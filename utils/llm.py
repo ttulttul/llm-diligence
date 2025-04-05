@@ -41,7 +41,11 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
             if isinstance(item, str):
                 formatted_content.append({"type": "text", "text": item})
             elif isinstance(item, instructor.multimodal.PDF):  # PDF object from instructor.multimodal
-                formatted_content.append(item)  # PDF object is already correctly formatted
+                # Format PDF object correctly for Anthropic API
+                formatted_content.append({
+                    "type": "image",
+                    "source": item.source
+                })
             else:
                 # Already formatted content
                 formatted_content.append(item)
