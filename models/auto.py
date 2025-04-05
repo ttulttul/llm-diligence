@@ -65,7 +65,8 @@ Respond with only the exact model name (one of the keys from the available model
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
         
-        # Setup instructor client
+        # Initialize Anthropic client and setup instructor
+        anthropic_client = Anthropic(api_key=API_KEY)
         client = instructor.from_anthropic(
             anthropic_client,
             mode=instructor.Mode.ANTHROPIC_TOOLS
