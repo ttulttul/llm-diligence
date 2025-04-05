@@ -32,11 +32,16 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
     """Cached function that makes the raw LLM call without Pydantic conversion."""
     anthropic_client = Anthropic(api_key=api_key)
     
+    # Format the content properly for the API
+    # If user_content is already a list (for multimodal content), use it directly
+    # Otherwise, wrap it in a list
+    formatted_content = user_content if isinstance(user_content, list) else [{"type": "text", "text": user_content}]
+    
     response = anthropic_client.messages.create(
         model=model_name,
         system=system_message,
         messages=[
-            {"role": "user", "content": user_content},
+            {"role": "user", "content": formatted_content},
         ],
         max_tokens=max_tokens,
     )
