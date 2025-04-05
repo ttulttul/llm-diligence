@@ -110,11 +110,16 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         # Call Claude with the prompt and the PDF content using the cached function
         from utils.llm import get_claude_model_name
         # Create a properly formatted message with text and PDF
+        # Extract the base64 data from the PDF object
         content = [
             {"type": "text", "text": prompt},
             {
                 "type": "image",
-                "source": str(pdf_input.source) if hasattr(pdf_input.source, '__fspath__') else pdf_input.source
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": pdf_input.data  # This contains the base64-encoded PDF data
+                }
             }
         ]
         response = cached_llm_invoke(

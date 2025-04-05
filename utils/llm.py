@@ -48,12 +48,14 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
             if isinstance(item, str):
                 formatted_content.append({"type": "text", "text": item})
             elif isinstance(item, instructor.multimodal.PDF):  # PDF object from instructor.multimodal
-                # Format PDF object correctly for Anthropic API
-                # Convert pathlib.Path to string if needed
-                source = str(item.source) if hasattr(item.source, '__fspath__') else item.source
+                # Format PDF object correctly for Anthropic API with base64 encoding
                 formatted_content.append({
                     "type": "image",
-                    "source": source
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": item.data  # This contains the base64-encoded PDF data
+                    }
                 })
             else:
                 # Already formatted content
