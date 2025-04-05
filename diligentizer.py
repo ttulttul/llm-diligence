@@ -114,7 +114,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             {"type": "text", "text": prompt},
             {
                 "type": "image",
-                "source": pdf_input.source
+                "source": str(pdf_input.source) if hasattr(pdf_input.source, '__fspath__') else pdf_input.source
             }
         ]
         response = cached_llm_invoke(

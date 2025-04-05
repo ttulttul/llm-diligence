@@ -19,7 +19,14 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens):
     """Generate a unique cache key for the request parameters."""
     # Convert user_content to a stable string representation if it's a list
     if isinstance(user_content, list):
-        content_str = json.dumps(user_content, sort_keys=True, default=str)
+        # Use a custom default function to handle PosixPath objects
+        def default_serializer(obj):
+            import pathlib
+            if isinstance(obj, pathlib.Path):
+                return str(obj)
+            return str(obj)
+            
+        content_str = json.dumps(user_content, sort_keys=True, default=default_serializer)
     else:
         content_str = str(user_content)
         
@@ -42,9 +49,11 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
                 formatted_content.append({"type": "text", "text": item})
             elif isinstance(item, instructor.multimodal.PDF):  # PDF object from instructor.multimodal
                 # Format PDF object correctly for Anthropic API
+                # Convert pathlib.Path to string if needed
+                source = str(item.source) if hasattr(item.source, '__fspath__') else item.source
                 formatted_content.append({
                     "type": "image",
-                    "source": item.source
+                    "source": source
                 })
             else:
                 # Already formatted content
