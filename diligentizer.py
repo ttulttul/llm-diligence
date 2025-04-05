@@ -17,7 +17,7 @@ load_dotenv()
 # Import the models package
 import models
 from models.base import DiligentizerModel
-from utils.llm import cached_llm_invoke, get_claude_model_name
+from utils.llm import cached_llm_invoke
 
 def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
     """Discover all available models in the models package."""
@@ -58,12 +58,6 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]]) -> No
 
 def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software_license.pdf") -> None:
     """Run the analysis with the selected model."""
-    # Retrieve your Anthropic API key from .env file
-    API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-    if not API_KEY:
-        print("Error: ANTHROPIC_API_KEY environment variable not found.")
-        print("Please set it in your .env file or environment variables.")
-        sys.exit(1)
 
     # Check if this is the auto model
     if model_class.__name__ == "AutoModel":
@@ -87,10 +81,6 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             print(f"An error occurred during auto model selection: {e}")
             return
     
-    # Regular model analysis (not auto)
-    # Initialize Anthropic client 
-    anthropic_client = Anthropic(api_key=API_KEY)
-    
     # Load the PDF file for analysis
     pdf_input = PDF.from_path(pdf_path)
     
@@ -110,9 +100,6 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
     )
 
     try:
-        # Call Claude with the prompt and the PDF using instructor
-        from utils.llm import get_claude_model_name
-        
         # Create message content with both text and PDF
         message_content = [
             {"type": "text", "text": prompt},
@@ -121,12 +108,10 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         
         # Use cached LLM invoke instead of direct API call
         response = cached_llm_invoke(
-            model_name=get_claude_model_name(),
             system_message="You are a document analysis assistant that extracts structured information from documents.",
             user_content=message_content,
             max_tokens=1000,
-            response_model=model_class,
-            api_key=API_KEY
+            response_model=model_class
         )
 
         # Print the structured result

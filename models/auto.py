@@ -8,6 +8,8 @@ from anthropic import Anthropic
 from instructor.multimodal import PDF
 import sys
 
+from utils.llm import cached_llm_invoke
+
 class ModelSelection(DiligentizerModel):
     """Model used to receive the selected model name from the LLM."""
     model_name: str = Field(..., description="The name of the most appropriate model for this document")
@@ -21,11 +23,6 @@ class AutoModel(DiligentizerModel):
     @classmethod
     def from_pdf(cls, pdf_path: str, available_models: Dict[str, Type[DiligentizerModel]]) -> "AutoModel":
         """Use LLM to select and apply the most appropriate model for the document."""
-        # Get API key
-        API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-        if not API_KEY:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not found")
-        
         # Load the PDF for analysis
         pdf_input = PDF.from_path(pdf_path)
         
@@ -65,22 +62,12 @@ Respond with only the exact model name (one of the keys from the available model
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
         
-        # Initialize Anthropic client and setup instructor
-        anthropic_client = Anthropic(api_key=API_KEY)
-        client = instructor.from_anthropic(
-            anthropic_client,
-            mode=instructor.Mode.ANTHROPIC_TOOLS
-        )
-        
         # Make the API call with cached instructor
-        from utils.llm import get_claude_model_name, cached_llm_invoke
         response = cached_llm_invoke(
-            model_name=get_claude_model_name(),
             system_message="You are a document analysis assistant.",
             user_content=message_content,
             max_tokens=50,
-            response_model=ModelSelection,
-            api_key=API_KEY
+            response_model=ModelSelection
         )
         
         model_selection = response

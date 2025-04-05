@@ -46,15 +46,6 @@ def format_content_for_anthropic(content):
         for item in content:
             if isinstance(item, str):
                 formatted_content.append({"type": "text", "text": item})
-            elif isinstance(item, instructor.multimodal.PDF):
-                formatted_content.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "application/pdf",
-                        "data": item.data
-                    }
-                })
             else:
                 # Already formatted content
                 formatted_content.append(item)
@@ -63,9 +54,16 @@ def format_content_for_anthropic(content):
         # Simple text content
         return [{"type": "text", "text": content}]
 
-def cached_llm_invoke(model_name: str, system_message: str, user_content: list, max_tokens: int, 
-                     response_model, api_key: str):
+def cached_llm_invoke(model_name: str=None, system_message: str="", user_content: list=[], max_tokens: int=100, 
+                     response_model=None):
     """Function to invoke the LLM with caching support for Pydantic models."""
+    # Get the Anthropic API key
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    # If model_name is None, set it automatically to the default
+    if model_name is None:
+        model_name = get_claude_model_name()
+
     # Generate a cache key for this specific request
     cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
     
@@ -97,7 +95,7 @@ def cached_llm_invoke(model_name: str, system_message: str, user_content: list, 
         max_tokens=max_tokens,
         response_model=response_model
     )
-    
+
     # Cache the result
     serialized_result = result.model_dump_json()
     cache.set(cache_key, serialized_result)
