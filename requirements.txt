@@ -1,0 +1,7 @@
+# Core dependencies
+anthropic>=0.18.0
+instructor>=1.0.0
+pydantic>=2.0.0
+
+# PDF processing
+pdfminer.six>=20221105
