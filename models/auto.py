@@ -71,15 +71,15 @@ Respond with only the exact model name (one of the keys from the available model
             mode=instructor.Mode.ANTHROPIC_TOOLS
         )
         
-        # Make the API call with instructor
-        from utils.llm import get_claude_model_name
-        response = client.chat.completions.create(
-            model=get_claude_model_name(),
-            messages=[
-                {"role": "user", "content": message_content}
-            ],
+        # Make the API call with cached instructor
+        from utils.llm import get_claude_model_name, cached_llm_invoke
+        response = cached_llm_invoke(
+            model_name=get_claude_model_name(),
+            system_message="You are a document analysis assistant.",
+            user_content=message_content,
             max_tokens=50,
-            response_model=ModelSelection
+            response_model=ModelSelection,
+            api_key=API_KEY
         )
         
         model_selection = response
