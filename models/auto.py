@@ -3,9 +3,10 @@ import os
 from .base import DiligentizerModel
 from pydantic import Field, BaseModel
 import json
+import instructor
+from anthropic import Anthropic
 from instructor.multimodal import PDF
 import sys
-from utils.llm import cached_llm_invoke
 
 class ModelSelection(DiligentizerModel):
     """Model used to receive the selected model name from the LLM."""
@@ -58,21 +59,30 @@ Respond with only the exact model name (one of the keys from the available model
         # Make the first API call to select the model using the cached function
         system_message = "You are a document analysis assistant."
         
-        # Create properly formatted message content - use the same pattern as in diligentizer.py
-        user_content = [
+        # Create message content with both text and PDF
+        message_content = [
             {"type": "text", "text": prompt},
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
         
-        from utils.llm import get_claude_model_name
-        model_selection = cached_llm_invoke(
-            model_name=get_claude_model_name(),
-            system_message=system_message,
-            user_content=user_content,
-            max_tokens=50,
-            response_model=ModelSelection,
-            api_key=API_KEY
+        # Setup instructor client
+        client = instructor.from_anthropic(
+            anthropic_client,
+            mode=instructor.Mode.ANTHROPIC_TOOLS
         )
+        
+        # Make the API call with instructor
+        from utils.llm import get_claude_model_name
+        response = client.chat.completions.create(
+            model=get_claude_model_name(),
+            messages=[
+                {"role": "user", "content": message_content}
+            ],
+            max_tokens=50,
+            response_model=ModelSelection
+        )
+        
+        model_selection = response
         
         chosen_model_name = model_selection.model_name
         
