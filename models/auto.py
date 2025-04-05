@@ -60,7 +60,7 @@ Respond with only the exact model name (one of the keys from the available model
         user_content = [prompt, pdf_input]
         
         model_selection = cached_llm_invoke(
-            model_name="claude-3-sonnet-20240229",
+            model_name="claude-3-7-sonnet-20250219",
             system_message=system_message,
             user_content=user_content,
             max_tokens=50,
