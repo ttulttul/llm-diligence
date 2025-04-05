@@ -88,47 +88,48 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             return
     
     # Regular model analysis (not auto)
-    # Load the PDF file for analysis
-    pdf_input = PDF.from_path(pdf_path)
+    # Use instructor's PDF class which handles file reading and API formatting
+    with instructor.multimodal.anthropic.document_analysis(Anthropic(api_key=API_KEY)) as analyzer:
+        pdf_input = PDF.from_path(pdf_path)
     
-    # Create a dynamic prompt based on the model fields
-    field_descriptions = []
-    for field_name, field_info in model_class.model_fields.items():
-        desc = field_info.description or f"the {field_name}"
-        field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
-    
-    fields_json = ",\n".join(field_descriptions)
-    
-    prompt = (
-        f"You are a document analyst. Analyze the following document "
-        f"and extract the key details. Your output must be valid JSON matching this exact schema: "
-        f"{{\n{fields_json}\n}}. "
-        f"Output only the JSON."
-    )
+        # Create a dynamic prompt based on the model fields
+        field_descriptions = []
+        for field_name, field_info in model_class.model_fields.items():
+            desc = field_info.description or f"the {field_name}"
+            field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
+        
+        fields_json = ",\n".join(field_descriptions)
+        
+        prompt = (
+            f"Analyze the following document and extract the key details. "
+            f"Your output must be valid JSON matching this exact schema: "
+            f"{{\n{fields_json}\n}}. "
+            f"Output only the JSON."
+        )
 
     try:
-        # Call Claude with the prompt and the PDF content using the cached function
+        # Call Claude with the prompt and the PDF using instructor's multimodal functionality
         from utils.llm import get_claude_model_name
-        # Create a properly formatted message with text and PDF
-        # Extract the base64 data from the PDF object
-        content = [
-            {"type": "text", "text": prompt},
-            {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "application/pdf",
-                    "data": pdf_input.data  # This contains the base64-encoded PDF data
-                }
-            }
-        ]
-        response = cached_llm_invoke(
-            model_name=get_claude_model_name(),
-            system_message="You are a document analyst.",
-            user_content=content,
+        
+        # Let instructor handle the formatting of the request with the PDF
+        content = prompt
+        # Use instructor's built-in support for Anthropic PDF analysis
+        anthropic_client = Anthropic(api_key=API_KEY)
+        client = instructor.from_anthropic(
+            anthropic_client,
+            mode=instructor.Mode.ANTHROPIC_TOOLS
+        )
+        
+        response = client.chat.completions.create(
+            model=get_claude_model_name(),
+            messages=[
+                {"role": "user", "content": [
+                    {"type": "text", "text": content},
+                    pdf_input
+                ]}
+            ],
             max_tokens=1000,
-            response_model=model_class,
-            api_key=API_KEY
+            response_model=model_class
         )
 
         # Print the structured result
