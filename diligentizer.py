@@ -9,13 +9,40 @@ import instructor
 from anthropic import Anthropic
 from instructor.multimodal import PDF
 from dotenv import load_dotenv
+import joblib
+from joblib import Memory
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Set up cache directory
+cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cache')
+os.makedirs(cache_dir, exist_ok=True)
+memory = Memory(cache_dir, verbose=0)
+
 # Import the models package
 import models
 from models.base import DiligentizerModel
+
+@memory.cache
+def cached_llm_invoke(model_name: str, system_message: str, user_content: list, max_tokens: int, 
+                     response_model: Type[DiligentizerModel], api_key: str):
+    """Cached function to invoke the LLM."""
+    anthropic_client = Anthropic(api_key=api_key)
+    client = instructor.from_anthropic(
+        anthropic_client,
+        mode=instructor.Mode.ANTHROPIC_TOOLS
+    )
+    
+    return client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_content},
+        ],
+        max_tokens=max_tokens,
+        response_model=response_model,
+    )
 
 def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
     """Discover all available models in the models package."""
@@ -86,13 +113,6 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             return
     
     # Regular model analysis (not auto)
-    # Initialize the Anthropic client and Instructor with tool support
-    anthropic_client = Anthropic(api_key=API_KEY)
-    client = instructor.from_anthropic(
-        anthropic_client,
-        mode=instructor.Mode.ANTHROPIC_TOOLS
-    )
-
     # Load the PDF file for analysis
     pdf_input = PDF.from_path(pdf_path)
     
@@ -112,15 +132,14 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
     )
 
     try:
-        # Call Claude with the prompt and the PDF content
-        response = client.chat.completions.create(
-            model="claude-3-7-sonnet-20250219",
-            messages=[
-                {"role": "system", "content": "You are a document analyst."},
-                {"role": "user", "content": [prompt, pdf_input]},
-            ],
+        # Call Claude with the prompt and the PDF content using the cached function
+        response = cached_llm_invoke(
+            model_name="claude-3-7-sonnet-20250219",
+            system_message="You are a document analyst.",
+            user_content=[prompt, pdf_input],
             max_tokens=1000,
             response_model=model_class,
+            api_key=API_KEY
         )
 
         # Print the structured result
