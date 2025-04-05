@@ -112,7 +112,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         # Create a properly formatted message with text and PDF
         content = [
             {"type": "text", "text": prompt},
-            pdf_input.to_dict()  # Convert the PDF to the proper format
+            pdf_input  # PDF object is already properly formatted for Anthropic
         ]
         response = cached_llm_invoke(
             model_name=get_claude_model_name(),

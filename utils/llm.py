@@ -1,5 +1,6 @@
 import os
 import instructor
+from instructor.multimodal import PDF
 from anthropic import Anthropic
 from joblib import Memory
 import json
@@ -39,8 +40,8 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
         for item in user_content:
             if isinstance(item, str):
                 formatted_content.append({"type": "text", "text": item})
-            elif hasattr(item, 'to_dict'):  # PDF object from instructor.multimodal
-                formatted_content.append(item.to_dict())
+            elif isinstance(item, instructor.multimodal.PDF):  # PDF object from instructor.multimodal
+                formatted_content.append(item)  # PDF object is already correctly formatted
             else:
                 # Already formatted content
                 formatted_content.append(item)
