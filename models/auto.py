@@ -57,7 +57,12 @@ Respond with only the exact model name (one of the keys from the available model
         
         # Make the first API call to select the model using the cached function
         system_message = "You are a document analysis assistant."
-        user_content = [prompt, pdf_input]
+        
+        # Create properly formatted message content
+        user_content = [
+            {"type": "text", "text": prompt},
+            pdf_input  # instructor's PDF class handles formatting correctly
+        ]
         
         from utils.llm import get_claude_model_name
         model_selection = cached_llm_invoke(
