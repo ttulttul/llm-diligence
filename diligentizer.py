@@ -8,6 +8,10 @@ from typing import Dict, Type, Optional, List
 import instructor
 from anthropic import Anthropic
 from instructor.multimodal import PDF
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import the models package
 import models
@@ -52,10 +56,12 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]]) -> No
 
 def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software_license.pdf") -> None:
     """Run the analysis with the selected model."""
-    # Retrieve your Anthropic API key
+    # Retrieve your Anthropic API key from .env file
     API_KEY = os.environ.get("ANTHROPIC_API_KEY")
     if not API_KEY:
-        raise ValueError("Please set the ANTHROPIC_API_KEY environment variable.")
+        print("Error: ANTHROPIC_API_KEY environment variable not found.")
+        print("Please set it in your .env file or environment variables.")
+        sys.exit(1)
 
     # Initialize the Anthropic client and Instructor with tool support
     anthropic_client = Anthropic(api_key=API_KEY)

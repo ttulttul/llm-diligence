@@ -26,6 +26,13 @@ echo -e "${GREEN}Installing dependencies...${NC}"
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# Create .env file if it doesn't exist
+if [ ! -f .env ]; then
+    echo -e "${GREEN}Creating .env file from template...${NC}"
+    cp .env.example .env
+    echo -e "${YELLOW}Please edit the .env file to add your API keys.${NC}"
+fi
+
 echo -e "${GREEN}Setup complete!${NC}"
 echo -e "${YELLOW}To activate the virtual environment in the future, run:${NC}"
 echo -e "source venv/bin/activate"
