@@ -58,7 +58,7 @@ Respond with only the exact model name (one of the keys from the available model
         # Make the first API call to select the model using the cached function
         system_message = "You are a document analysis assistant."
         
-        # Create properly formatted message content
+        # Create properly formatted message content - use the same pattern as in diligentizer.py
         user_content = [
             {"type": "text", "text": prompt},
             pdf_input  # instructor's PDF class handles formatting correctly
