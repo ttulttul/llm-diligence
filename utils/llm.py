@@ -34,8 +34,8 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
     
     response = anthropic_client.messages.create(
         model=model_name,
+        system=system_message,
         messages=[
-            {"role": "system", "content": system_message},
             {"role": "user", "content": user_content},
         ],
         max_tokens=max_tokens,
