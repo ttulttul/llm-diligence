@@ -5,7 +5,7 @@ from pydantic import Field
 import json
 from instructor.multimodal import PDF
 import sys
-import importlib.util
+from utils.llm import cached_llm_invoke
 
 class AutoModel(DiligentizerModel):
     """Automatically selects the most appropriate model to analyze the document."""
@@ -20,18 +20,6 @@ class AutoModel(DiligentizerModel):
         API_KEY = os.environ.get("ANTHROPIC_API_KEY")
         if not API_KEY:
             raise ValueError("ANTHROPIC_API_KEY environment variable not found")
-        
-        # Import the cached_llm_invoke function dynamically
-        # Get the path to the current file and go up one directory to find diligentizer.py
-        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        diligentizer_path = os.path.join(current_dir, "diligentizer.py")
-        
-        spec = importlib.util.spec_from_file_location("diligentizer", diligentizer_path)
-        diligentizer = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(diligentizer)
-        
-        # Now we can use the cached function
-        cached_llm_invoke = diligentizer.cached_llm_invoke
         
         # Load the PDF for analysis
         pdf_input = PDF.from_path(pdf_path)
