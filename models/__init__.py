@@ -34,3 +34,4 @@ from .due_diligence import (
     # Complete Data Room
     DueDiligenceDataRoom
 )
+from .auto import AutoModel

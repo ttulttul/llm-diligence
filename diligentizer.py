@@ -63,6 +63,29 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         print("Please set it in your .env file or environment variables.")
         sys.exit(1)
 
+    # Check if this is the auto model
+    if model_class.__name__ == "AutoModel":
+        # Get all available models to pass to AutoModel
+        models_dict = get_available_models()
+        
+        try:
+            # Use the auto model to select the appropriate model
+            auto_model = model_class.from_pdf(pdf_path, models_dict)
+            
+            # Get the selected model and run the analysis with it
+            selected_model_name = auto_model.chosen_model_name
+            selected_model_class = models_dict[selected_model_name]
+            
+            # Now run the analysis with the selected model
+            run_analysis(selected_model_class, pdf_path)
+            
+            # Set the analysis result in auto_model if needed for further processing
+            return
+        except Exception as e:
+            print(f"An error occurred during auto model selection: {e}")
+            return
+    
+    # Regular model analysis (not auto)
     # Initialize the Anthropic client and Instructor with tool support
     anthropic_client = Anthropic(api_key=API_KEY)
     client = instructor.from_anthropic(
