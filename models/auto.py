@@ -1,11 +1,15 @@
 from typing import Dict, Type, Any, List
 import os
 from .base import DiligentizerModel
-from pydantic import Field
+from pydantic import Field, BaseModel
 import json
 from instructor.multimodal import PDF
 import sys
 from utils.llm import cached_llm_invoke
+
+class ModelSelection(DiligentizerModel):
+    """Model used to receive the selected model name from the LLM."""
+    model_name: str = Field(..., description="The name of the most appropriate model for this document")
 
 class AutoModel(DiligentizerModel):
     """Automatically selects the most appropriate model to analyze the document."""
@@ -55,14 +59,16 @@ Respond with only the exact model name (one of the keys from the available model
         system_message = "You are a document analysis assistant."
         user_content = [prompt, pdf_input]
         
-        chosen_model_name = cached_llm_invoke(
+        model_selection = cached_llm_invoke(
             model_name="claude-3-sonnet-20240229",
             system_message=system_message,
             user_content=user_content,
             max_tokens=50,
-            response_model=str,
+            response_model=ModelSelection,
             api_key=API_KEY
-        ).strip()
+        )
+        
+        chosen_model_name = model_selection.model_name
         
         # Validate the chosen model exists
         if chosen_model_name not in available_models:
