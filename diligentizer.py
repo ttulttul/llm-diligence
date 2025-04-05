@@ -109,10 +109,15 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
     try:
         # Call Claude with the prompt and the PDF content using the cached function
         from utils.llm import get_claude_model_name
+        # Create a properly formatted message with text and PDF
+        content = [
+            {"type": "text", "text": prompt},
+            pdf_input.to_dict()  # Convert the PDF to the proper format
+        ]
         response = cached_llm_invoke(
             model_name=get_claude_model_name(),
             system_message="You are a document analyst.",
-            user_content=[prompt, pdf_input],
+            user_content=content,
             max_tokens=1000,
             response_model=model_class,
             api_key=API_KEY

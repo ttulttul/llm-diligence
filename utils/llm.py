@@ -33,9 +33,20 @@ def _cached_raw_llm_call(cache_key, model_name, system_message, user_content, ma
     anthropic_client = Anthropic(api_key=api_key)
     
     # Format the content properly for the API
-    # If user_content is already a list (for multimodal content), use it directly
-    # Otherwise, wrap it in a list
-    formatted_content = user_content if isinstance(user_content, list) else [{"type": "text", "text": user_content}]
+    if isinstance(user_content, list):
+        # For multimodal content, ensure each item is properly formatted
+        formatted_content = []
+        for item in user_content:
+            if isinstance(item, str):
+                formatted_content.append({"type": "text", "text": item})
+            elif hasattr(item, 'to_dict'):  # PDF object from instructor.multimodal
+                formatted_content.append(item.to_dict())
+            else:
+                # Already formatted content
+                formatted_content.append(item)
+    else:
+        # Simple text content
+        formatted_content = [{"type": "text", "text": user_content}]
     
     response = anthropic_client.messages.create(
         model=model_name,
