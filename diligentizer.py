@@ -174,6 +174,9 @@ def main():
             selected_model = list(models_dict.keys())[int(choice) - 1]
         else:
             selected_model = choice
+    else:
+        # If args.model is provided, use it directly
+        selected_model = args.model
     
     # Validate the selected model exists
     if selected_model not in models_dict:
