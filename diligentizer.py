@@ -88,45 +88,48 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             return
     
     # Regular model analysis (not auto)
-    # Use instructor's PDF class which handles file reading and API formatting
-    with instructor.multimodal.anthropic.document_analysis(Anthropic(api_key=API_KEY)) as analyzer:
-        pdf_input = PDF.from_path(pdf_path)
+    # Initialize Anthropic client 
+    anthropic_client = Anthropic(api_key=API_KEY)
     
-        # Create a dynamic prompt based on the model fields
-        field_descriptions = []
-        for field_name, field_info in model_class.model_fields.items():
-            desc = field_info.description or f"the {field_name}"
-            field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
-        
-        fields_json = ",\n".join(field_descriptions)
-        
-        prompt = (
-            f"Analyze the following document and extract the key details. "
-            f"Your output must be valid JSON matching this exact schema: "
-            f"{{\n{fields_json}\n}}. "
-            f"Output only the JSON."
-        )
+    # Load the PDF file for analysis
+    pdf_input = PDF.from_path(pdf_path)
+    
+    # Create a dynamic prompt based on the model fields
+    field_descriptions = []
+    for field_name, field_info in model_class.model_fields.items():
+        desc = field_info.description or f"the {field_name}"
+        field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
+    
+    fields_json = ",\n".join(field_descriptions)
+    
+    prompt = (
+        f"Analyze the following document and extract the key details. "
+        f"Your output must be valid JSON matching this exact schema: "
+        f"{{\n{fields_json}\n}}. "
+        f"Output only the JSON."
+    )
 
     try:
-        # Call Claude with the prompt and the PDF using instructor's multimodal functionality
+        # Call Claude with the prompt and the PDF using instructor
         from utils.llm import get_claude_model_name
         
-        # Let instructor handle the formatting of the request with the PDF
-        content = prompt
-        # Use instructor's built-in support for Anthropic PDF analysis
-        anthropic_client = Anthropic(api_key=API_KEY)
+        # Setup instructor client
         client = instructor.from_anthropic(
             anthropic_client,
             mode=instructor.Mode.ANTHROPIC_TOOLS
         )
         
+        # Create message content with both text and PDF
+        message_content = [
+            {"type": "text", "text": prompt},
+            pdf_input  # instructor's PDF class handles formatting correctly
+        ]
+        
+        # Make the API call with instructor
         response = client.chat.completions.create(
             model=get_claude_model_name(),
             messages=[
-                {"role": "user", "content": [
-                    {"type": "text", "text": content},
-                    pdf_input
-                ]}
+                {"role": "user", "content": message_content}
             ],
             max_tokens=1000,
             response_model=model_class
