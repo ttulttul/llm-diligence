@@ -17,7 +17,7 @@ load_dotenv()
 # Import the models package
 import models
 from models.base import DiligentizerModel
-from utils.llm import cached_llm_invoke
+from utils.llm import cached_llm_invoke, get_claude_model_name
 
 def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
     """Discover all available models in the models package."""
@@ -113,26 +113,20 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         # Call Claude with the prompt and the PDF using instructor
         from utils.llm import get_claude_model_name
         
-        # Setup instructor client
-        client = instructor.from_anthropic(
-            anthropic_client,
-            mode=instructor.Mode.ANTHROPIC_TOOLS
-        )
-        
         # Create message content with both text and PDF
         message_content = [
             {"type": "text", "text": prompt},
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
         
-        # Make the API call with instructor
-        response = client.chat.completions.create(
-            model=get_claude_model_name(),
-            messages=[
-                {"role": "user", "content": message_content}
-            ],
+        # Use cached LLM invoke instead of direct API call
+        response = cached_llm_invoke(
+            model_name=get_claude_model_name(),
+            system_message="You are a document analysis assistant that extracts structured information from documents.",
+            user_content=message_content,
             max_tokens=1000,
-            response_model=model_class
+            response_model=model_class,
+            api_key=API_KEY
         )
 
         # Print the structured result
