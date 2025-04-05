@@ -91,7 +91,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
     try:
         # Call Claude with the prompt and the PDF content
         response = client.chat.completions.create(
-            model="claude-3.7-sonnet",
+            model="claude-3-7-sonnet-20250219",
             messages=[
                 {"role": "system", "content": "You are a document analyst."},
                 {"role": "user", "content": [prompt, pdf_input]},
