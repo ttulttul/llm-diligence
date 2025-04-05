@@ -129,6 +129,7 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--list", action="store_true", help="List all available models")
     group.add_argument("--model", type=str, help="Specify the model to use")
+    group.add_argument("--auto", action="store_true", help="Automatically select the most appropriate model")
     parser.add_argument("--pdf", type=str, default="software_license.pdf", 
                        help="Path to the PDF file (default: software_license.pdf)")
     
@@ -145,9 +146,21 @@ def main():
         list_available_models(models_dict)
         return 0
         
-    # If no model specified, allow interactive selection
-    selected_model = args.model
-    if not selected_model:
+    # Handle automatic model selection
+    if args.auto:
+        auto_model_key = None
+        for key, model_class in models_dict.items():
+            if model_class.__name__ == "AutoModel":
+                auto_model_key = key
+                break
+        
+        if auto_model_key:
+            selected_model = auto_model_key
+        else:
+            print("Error: AutoModel not found in available models.")
+            return 1
+    # If no model specified and not using auto, allow interactive selection
+    elif not args.model:
         list_available_models(models_dict)
         print("\nSelect a model by number or name (or 'q' to quit):")
         choice = input("> ").strip()
