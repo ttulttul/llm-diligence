@@ -1,11 +1,11 @@
 from typing import Dict, Type, Any, List
-import anthropic
 import os
 from .base import DiligentizerModel
-import instructor
 from pydantic import Field
 import json
 from instructor.multimodal import PDF
+import sys
+import importlib.util
 
 class AutoModel(DiligentizerModel):
     """Automatically selects the most appropriate model to analyze the document."""
@@ -20,13 +20,18 @@ class AutoModel(DiligentizerModel):
         API_KEY = os.environ.get("ANTHROPIC_API_KEY")
         if not API_KEY:
             raise ValueError("ANTHROPIC_API_KEY environment variable not found")
-            
-        client = anthropic.Anthropic(api_key=API_KEY)
-        # Create an instructor-enabled client
-        instructor_client = instructor.from_anthropic(
-            client,
-            mode=instructor.Mode.ANTHROPIC_TOOLS
-        )
+        
+        # Import the cached_llm_invoke function dynamically
+        # Get the path to the current file and go up one directory to find diligentizer.py
+        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        diligentizer_path = os.path.join(current_dir, "diligentizer.py")
+        
+        spec = importlib.util.spec_from_file_location("diligentizer", diligentizer_path)
+        diligentizer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(diligentizer)
+        
+        # Now we can use the cached function
+        cached_llm_invoke = diligentizer.cached_llm_invoke
         
         # Load the PDF for analysis
         pdf_input = PDF.from_path(pdf_path)
@@ -58,16 +63,17 @@ Based on the document content, which model would be most appropriate to use?
 Respond with only the exact model name (one of the keys from the available models list).
 """
         
-        # Make the first API call to select the model
-        chosen_model_name = instructor_client.chat.completions.create(
-            model="claude-3-sonnet-20240229",
-            messages=[
-                {"role": "system", "content": "You are a document analysis assistant."},
-                {"role": "user", "content": [prompt, pdf_input]},
-            ],
-            response_model=str,
+        # Make the first API call to select the model using the cached function
+        system_message = "You are a document analysis assistant."
+        user_content = [prompt, pdf_input]
+        
+        chosen_model_name = cached_llm_invoke(
+            model_name="claude-3-sonnet-20240229",
+            system_message=system_message,
+            user_content=user_content,
             max_tokens=50,
-            temperature=0.0,
+            response_model=str,
+            api_key=API_KEY
         ).strip()
         
         # Validate the chosen model exists
