@@ -3,6 +3,10 @@ import instructor
 from anthropic import Anthropic
 from joblib import Memory
 
+def get_claude_model_name():
+    """Get the Claude model name from environment variable or use default."""
+    return os.environ.get("CLAUDE_MODEL_NAME", "claude-3-7-sonnet-20250219")
+
 # Set up cache directory
 cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.cache')
 os.makedirs(cache_dir, exist_ok=True)

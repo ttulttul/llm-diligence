@@ -59,8 +59,9 @@ Respond with only the exact model name (one of the keys from the available model
         system_message = "You are a document analysis assistant."
         user_content = [prompt, pdf_input]
         
+        from utils.llm import get_claude_model_name
         model_selection = cached_llm_invoke(
-            model_name="claude-3-7-sonnet-20250219",
+            model_name=get_claude_model_name(),
             system_message=system_message,
             user_content=user_content,
             max_tokens=50,
