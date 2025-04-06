@@ -80,6 +80,24 @@ Store analysis results in a SQLite database:
 python diligentizer.py --model legal_SoftwareLicenseAgreement --pdf path/to/your/document.pdf --sqlite data/results.db
 ```
 
+### Parallel Processing
+
+Process an entire directory of PDF files in parallel:
+```bash
+./parallel_diligentizer.sh --auto --db results.db ./documents
+```
+
+The parallel processing script supports:
+- Processing up to 32 files simultaneously (configurable)
+- Automatic model detection or specific model selection
+- Database storage for all processed files
+- Recursive directory traversal
+
+For more options:
+```bash
+./parallel_diligentizer.sh --help
+```
+
 ## Supported Document Types
 
 Diligentizer supports a wide range of document types, including:
