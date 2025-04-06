@@ -66,7 +66,7 @@ Respond with only the exact model name (one of the keys from the available model
         response = cached_llm_invoke(
             system_message="You are a document analysis assistant.",
             user_content=message_content,
-            max_tokens=50,
+            max_tokens=500,
             response_model=ModelSelection
         )
         

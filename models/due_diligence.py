@@ -86,7 +86,7 @@ class EmployeeCensus(DiligentizerModel):
     employees: List[Dict[str, Any]] = Field(..., description="List of employee records")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "employees": [
                     {
@@ -147,7 +147,7 @@ class PricingBook(DiligentizerModel):
     special_pricing_terms: Optional[List[str]] = Field(None, description="Special pricing programs")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "products": [
                     {
@@ -199,7 +199,7 @@ class AccountsReceivableAging(DiligentizerModel):
     bad_debt_reserve: float = Field(..., description="Reserve for bad debt")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "aging_buckets": {
                     "current": 500000,
@@ -342,7 +342,7 @@ class InternalApplicationInventory(DiligentizerModel):
     applications: List[Dict[str, Any]] = Field(..., description="List of internal applications")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "applications": [
                     {
@@ -404,7 +404,7 @@ class IntellectualPropertyInventory(DiligentizerModel):
     ip_litigation_history: Optional[List[Dict[str, Any]]] = Field(None, description="IP litigation history")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "patents": [
                     {

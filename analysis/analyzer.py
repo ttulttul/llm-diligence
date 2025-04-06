@@ -114,7 +114,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         response = cached_llm_invoke(
             system_message="You are a document analysis assistant that extracts structured information from documents.",
             user_content=message_content,
-            max_tokens=1000,
+            max_tokens=2000,
             response_model=model_class
         )
         
