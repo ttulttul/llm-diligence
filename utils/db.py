@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Dict, Type, Any, Optional, List
 import json
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel
 
 # Create the declarative base class
@@ -89,8 +89,8 @@ def create_tables(engine, pydantic_models):
     return sa_models
 
 def serialize_for_db(obj):
-    """Recursively convert datetime objects to ISO format strings."""
-    if isinstance(obj, datetime):
+    """Recursively convert datetime and date objects to ISO format strings."""
+    if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     elif isinstance(obj, dict):
         return {k: serialize_for_db(v) for k, v in obj.items()}
@@ -142,10 +142,10 @@ def setup_database(db_path: str, model_classes: List[Type[BaseModel]]):
     
     return engine, Session, sa_models
 
-# Custom JSON encoder that can handle datetime objects
+# Custom JSON encoder that can handle datetime and date objects
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime):
+        if isinstance(obj, (datetime, date)):
             return obj.isoformat()
         return super().default(obj)
 
