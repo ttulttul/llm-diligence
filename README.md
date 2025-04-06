@@ -26,6 +26,22 @@ Diligentizer uses large language models to analyze document content and extract 
 3. The system analyzes the document content and extracts relevant fields
 4. Results are displayed as structured JSON data that matches the corresponding Pydantic model
 
+## Efficient Caching
+
+Diligentizer automatically caches LLM calls to save time and reduce API costs. The caching system:
+
+- Stores LLM responses in a local disk cache (`.cache` directory)
+- Generates unique cache keys based on:
+  - The LLM model being used
+  - The system message
+  - The complete user content (including PDF)
+  - The response model structure
+  - The max tokens parameter
+- Automatically returns cached results for identical queries
+- Handles complex inputs like PDFs and structured data
+
+The caching implementation uses the `diskcache` library with MD5 hashing to create unique and consistent cache keys. This means repeated analysis of the same document with the same model will be nearly instantaneous after the first run.
+
 ## Installation
 
 ```bash
