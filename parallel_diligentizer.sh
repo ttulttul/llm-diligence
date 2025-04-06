@@ -204,11 +204,11 @@ echo 0 > /tmp/diligentizer_count
 if [[ $VERBOSE -eq 1 ]]; then
     # Verbose: Show output from each job
     find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
-    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 1 '$LOG_LEVEL' '$LOG_FILE_ARG' '$ERROR_LOG_FILE'" {}
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$1\" '$MODEL_ARG' '$DB_ARG' 1 '$LOG_LEVEL' '$LOG_FILE_ARG' '$ERROR_LOG_FILE'" {} 
 else
     # Silent: Show progress counter
     find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
-    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 0 '$LOG_LEVEL' '$LOG_FILE_ARG' '$ERROR_LOG_FILE'" {}
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$1\" '$MODEL_ARG' '$DB_ARG' 0 '$LOG_LEVEL' '$LOG_FILE_ARG' '$ERROR_LOG_FILE'" {}
     echo # Print newline after progress display
 fi
 
