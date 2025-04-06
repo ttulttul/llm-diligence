@@ -138,12 +138,10 @@ else
     DB_ARG=""
 fi
 
-# Find all PDF files in the target directory
+# Find all PDF files in the target directory and count them
 echo "Finding PDF files in '$TARGET_DIR'..."
-PDF_FILES=$(find "$TARGET_DIR" -type f -iname "*.pdf" | sort)
+TOTAL_FILES=$(find "$TARGET_DIR" -type f -iname "*.pdf" | wc -l | tr -d ' ')
 
-# Count how many files we found
-TOTAL_FILES=$(echo "$PDF_FILES" | wc -l | tr -d ' ')
 if [[ $TOTAL_FILES -eq 0 ]]; then
     echo "No PDF files found in '$TARGET_DIR'."
     exit 0
@@ -155,13 +153,15 @@ echo "Processing with $MAX_JOBS parallel jobs..."
 # Initialize counter file
 echo 0 > /tmp/diligentizer_count
 
-# Process files in parallel using find and xargs
+# Process files in parallel using find and xargs with null delimiter
 if [[ $VERBOSE -eq 1 ]]; then
     # Verbose: Show output from each job
-    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 1"
+    find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 1" {}
 else
     # Silent: Show progress counter
-    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 0"
+    find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 0" {}
     echo # Print newline after progress display
 fi
 
