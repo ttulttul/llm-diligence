@@ -75,6 +75,11 @@ Analyze a document with a specific model:
 python diligentizer.py --model legal_SoftwareLicenseAgreement --pdf path/to/your/document.pdf
 ```
 
+Store analysis results in a SQLite database:
+```bash
+python diligentizer.py --model legal_SoftwareLicenseAgreement --pdf path/to/your/document.pdf --sqlite data/results.db
+```
+
 ## Supported Document Types
 
 Diligentizer supports a wide range of document types, including:
@@ -92,12 +97,34 @@ Diligentizer supports a wide range of document types, including:
 
 You can view the full list of supported models by running `python diligentizer.py --list`
 
+## Database Integration
+
+Diligentizer can store all extraction results in a SQLite database for easy querying and analysis:
+
+- Automatically creates appropriate tables for each model type
+- Handles complex nested model structures by converting them to JSON
+- Manages data type conversions between Pydantic and SQLAlchemy
+- Creates a normalized database schema from your models
+- Preserves all model relationships and data
+
+To use the database functionality, simply add the `--sqlite` parameter followed by the database path:
+
+```bash
+python diligentizer.py --model financial_FinancialStatement --pdf quarterly_report.pdf --sqlite data/finances.db
+```
+
+The system will:
+1. Create the database file and directory if they don't exist
+2. Set up tables for all available models
+3. Convert the extracted Pydantic model to a SQLAlchemy model
+4. Save the data to the appropriate table
+5. Print confirmation with the table name and record ID
+
 ## Future Work
 
 Future development will focus on:
 
 - Exporting extracted data to CSV files
-- Database integration for storing and querying extracted information
 - Batch processing of multiple documents
 - Custom model creation based on your specific document types
 - Web interface for document upload and analysis
