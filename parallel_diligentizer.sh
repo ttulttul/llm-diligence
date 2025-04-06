@@ -46,14 +46,14 @@ process_pdf() {
     local db_arg="$3"
     local verbose="$4"
     local log_level="$5"
-    local log_file="$6"
+    local log_file_arg="$6"
     
     if [[ $verbose -eq 1 ]]; then
         echo "Processing: $pdf_file"
-        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file
+        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file_arg
         echo "Completed: $pdf_file"
     else
-        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file >/dev/null 2>&1
+        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file_arg >/dev/null 2>&1
         # Update progress (safely for concurrent processes)
         local tmp_count
         tmp_count=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
