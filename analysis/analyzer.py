@@ -4,12 +4,13 @@ import importlib
 import inspect
 import pkgutil
 from typing import Dict, Type, Optional, List
+from datetime import datetime
 from instructor.multimodal import PDF
 
 # Import the models package
 import models
 from models.base import DiligentizerModel
-from utils.llm import cached_llm_invoke
+from utils.llm import cached_llm_invoke, get_claude_model_name
 from utils.db import setup_database, save_model_to_db
 
 def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
@@ -107,8 +108,10 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             response_model=model_class
         )
         
-        # Set the source filename in the model
+        # Set the source filename, timestamp and LLM model in the response
         response.source_filename = pdf_path
+        response.analyzed_at = datetime.now()
+        response.llm_model = get_claude_model_name()
         
         # Print the structured result
         print(f"\nExtracted {model_class.__name__} Details:")
