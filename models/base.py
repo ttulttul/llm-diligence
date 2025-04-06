@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional, Dict, Any
 from datetime import datetime
+import json
 
 # Base class for all models if needed
 class DiligentizerModel(BaseModel):
@@ -9,10 +10,14 @@ class DiligentizerModel(BaseModel):
     analyzed_at: Optional[datetime] = Field(None, description="Timestamp when the document was analyzed")
     llm_model: Optional[str] = Field(None, description="The LLM model used for analysis (e.g. Claude model name)")
     
+    @field_serializer('analyzed_at')
+    def serialize_datetime(self, dt: Optional[datetime], _info):
+        """Serialize datetime field to ISO format string"""
+        if dt is None:
+            return None
+        return dt.isoformat()
+    
     def model_dump(self, **kwargs) -> Dict[str, Any]:
         """Override model_dump to handle datetime serialization"""
         data = super().model_dump(**kwargs)
-        # Convert datetime objects to ISO format strings
-        if data.get("analyzed_at") is not None and isinstance(data["analyzed_at"], datetime):
-            data["analyzed_at"] = data["analyzed_at"].isoformat()
         return data

@@ -3,6 +3,7 @@ import sys
 import importlib
 import inspect
 import pkgutil
+import json
 from typing import Dict, Type, Optional, List
 from datetime import datetime
 from instructor.multimodal import PDF
@@ -124,10 +125,16 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
                 models_dict = get_available_models()
                 model_classes = list(models_dict.values())
                 engine, Session, sa_models = setup_database(db_path, model_classes)
-                
+            
                 # Create a session and save the model
                 with Session() as session:
-                    sa_instance = save_model_to_db(response, sa_models, session)
+                    # Convert the model to a JSON-compatible dict
+                    json_compatible_data = json.loads(response.model_dump_json())
+                
+                    # Create a new instance with the JSON data
+                    json_safe_response = type(response).model_validate(json_compatible_data)
+                
+                    sa_instance = save_model_to_db(json_safe_response, sa_models, session)
                     print(f"\nSaved to database: {db_path}, table: {sa_instance.__tablename__}, ID: {sa_instance.id}")
             except Exception as e:
                 print(f"Error saving to database: {e}")
