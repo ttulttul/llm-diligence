@@ -17,6 +17,7 @@ DATABASE_FILE=""
 VERBOSE=0
 LOG_LEVEL="INFO"
 LOG_FILE=""
+ERROR_LOG_FILE=""
 TOTAL_PROCESSED=0
 TOTAL_FILES=0
 
@@ -32,6 +33,7 @@ function show_usage {
     echo "  -v, --verbose            Show verbose output"
     echo "  -l, --log-level LEVEL    Set log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     echo "  -f, --log-file FILE      Write logs to file"
+    echo "  -e, --error-log FILE     Write stderr from subprocesses to file"
     echo "  -h, --help               Show this help message"
     echo ""
     echo "Example:"
@@ -47,13 +49,19 @@ process_pdf() {
     local verbose="$4"
     local log_level="$5"
     local log_file_arg="$6"
+    local error_log_file="$7"
     
     if [[ $verbose -eq 1 ]]; then
         echo "Processing: $pdf_file"
         python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file_arg
         echo "Completed: $pdf_file"
     else
-        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file_arg >/dev/null 2>&1
+        if [[ -n "$error_log_file" ]]; then
+            # Prefix errors with filename and timestamp for context
+            python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file_arg >/dev/null 2>> >(sed "s/^/$(date '+%Y-%m-%d %H:%M:%S') - $pdf_file: /" >> "$error_log_file")
+        else
+            python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file_arg >/dev/null 2>&1
+        fi
         # Update progress (safely for concurrent processes)
         local tmp_count
         tmp_count=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
@@ -98,6 +106,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -f|--log-file)
             LOG_FILE="$2"
+            shift 2
+            ;;
+        -e|--error-log)
+            ERROR_LOG_FILE="$2"
             shift 2
             ;;
         -h|--help)
@@ -159,6 +171,20 @@ else
     LOG_FILE_ARG=""
 fi
 
+# Initialize error log file if specified
+if [[ -n "$ERROR_LOG_FILE" ]]; then
+    # Create directory if it doesn't exist
+    ERROR_LOG_DIR=$(dirname "$ERROR_LOG_FILE")
+    if [[ -n "$ERROR_LOG_DIR" && "$ERROR_LOG_DIR" != "." ]]; then
+        mkdir -p "$ERROR_LOG_DIR"
+    fi
+    
+    # Initialize with header
+    echo "# Diligentizer Error Log - Started $(date)" > "$ERROR_LOG_FILE"
+    echo "# Command: $0 $*" >> "$ERROR_LOG_FILE"
+    echo "# -------------------------------------------------" >> "$ERROR_LOG_FILE"
+fi
+
 # Find all PDF files in the target directory and count them
 echo "Finding PDF files in '$TARGET_DIR'..."
 TOTAL_FILES=$(find "$TARGET_DIR" -type f -iname "*.pdf" | wc -l | tr -d ' ')
@@ -178,11 +204,11 @@ echo 0 > /tmp/diligentizer_count
 if [[ $VERBOSE -eq 1 ]]; then
     # Verbose: Show output from each job
     find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
-    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 1 '$LOG_LEVEL' '$LOG_FILE_ARG'" {}
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 1 '$LOG_LEVEL' '$LOG_FILE_ARG' '$ERROR_LOG_FILE'" {}
 else
     # Silent: Show progress counter
     find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
-    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 0 '$LOG_LEVEL' '$LOG_FILE_ARG'" {}
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 0 '$LOG_LEVEL' '$LOG_FILE_ARG' '$ERROR_LOG_FILE'" {}
     echo # Print newline after progress display
 fi
 
