@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Dict, Type, Any, Optional, List
 import json
+from datetime import datetime
 from pydantic import BaseModel
 
 # Create the declarative base class
@@ -87,6 +88,21 @@ def create_tables(engine, pydantic_models):
     
     return sa_models
 
+def serialize_for_db(obj):
+    """Recursively convert datetime objects to ISO format strings."""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: serialize_for_db(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_for_db(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(serialize_for_db(item) for item in obj)
+    elif isinstance(obj, set):
+        return {serialize_for_db(item) for item in obj}
+    else:
+        return obj
+
 def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
     """Convert a Pydantic model instance to a SQLAlchemy model instance and save it."""
     # Create a dict with SQLAlchemy attribute names
@@ -106,6 +122,9 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
         elif isinstance(value, list) and value and isinstance(value[0], BaseModel):
             value = [item.model_dump() for item in value]
         
+        # Recursively serialize datetime objects
+        value = serialize_for_db(value)
+        
         data[attr_name] = value
     
     # Create and save the SQLAlchemy model instance
@@ -123,6 +142,13 @@ def setup_database(db_path: str, model_classes: List[Type[BaseModel]]):
     
     return engine, Session, sa_models
 
+# Custom JSON encoder that can handle datetime objects
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
 def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Session):
     """Save a model instance to the database."""
     model_class_name = model_instance.__class__.__name__
@@ -131,4 +157,12 @@ def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Sessio
     if not sa_model_class:
         raise ValueError(f"No SQLAlchemy model found for {model_class_name}")
     
-    return pydantic_to_sqlalchemy(model_instance, sa_model_class, session)
+    try:
+        return pydantic_to_sqlalchemy(model_instance, sa_model_class, session)
+    except TypeError as e:
+        if "not JSON serializable" in str(e):
+            # Fallback: Use JSON serialization with custom encoder as a last resort
+            model_dict = json.loads(json.dumps(model_instance.model_dump(), cls=DateTimeEncoder))
+            model_instance = type(model_instance).model_validate(model_dict)
+            return pydantic_to_sqlalchemy(model_instance, sa_model_class, session)
+        raise
