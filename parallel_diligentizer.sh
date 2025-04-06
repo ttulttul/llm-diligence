@@ -53,7 +53,11 @@ process_pdf() {
         tmp_count=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
         echo $((tmp_count + 1)) > /tmp/diligentizer_count
         local current=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
-        printf "\rProcessed %d/%d files (%.1f%%)" $current $TOTAL_FILES $(echo "scale=1; $current*100/$TOTAL_FILES" | bc)
+        if [[ $TOTAL_FILES -gt 0 ]]; then
+            printf "\rProcessed %d/%d files (%.1f%%)" $current $TOTAL_FILES $(echo "scale=1; $current*100/$TOTAL_FILES" | bc)
+        else
+            printf "\rProcessed %d files" $current
+        fi
     fi
 }
 export -f process_pdf
@@ -154,10 +158,10 @@ echo 0 > /tmp/diligentizer_count
 # Process files in parallel using find and xargs
 if [[ $VERBOSE -eq 1 ]]; then
     # Verbose: Show output from each job
-    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 1"
+    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 1"
 else
     # Silent: Show progress counter
-    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 0"
+    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 0"
     echo # Print newline after progress display
 fi
 
