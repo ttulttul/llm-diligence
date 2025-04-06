@@ -106,7 +106,10 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             max_tokens=1000,
             response_model=model_class
         )
-
+        
+        # Set the source filename in the model
+        response.source_filename = pdf_path
+        
         # Print the structured result
         print(f"\nExtracted {model_class.__name__} Details:")
         print(response.model_dump_json(indent=2))
