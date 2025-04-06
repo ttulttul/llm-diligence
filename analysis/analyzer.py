@@ -13,6 +13,7 @@ import models
 from models.base import DiligentizerModel
 from utils.llm import cached_llm_invoke, get_claude_model_name
 from utils.db import setup_database, save_model_to_db
+from utils import logger
 
 def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
     """Discover all available models in the models package."""
@@ -40,6 +41,7 @@ def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
 
 def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]]) -> None:
     """Print a formatted list of all available models."""
+    logger.info("Listing available models")
     print("\nAvailable Models:")
     print("=" * 60)
     for i, (name, model_class) in enumerate(models_dict.items(), 1):
@@ -56,6 +58,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
 
     # Check if this is the auto model
     if model_class.__name__ == "AutoModel":
+        logger.info(f"Using AutoModel for {pdf_path}")
         # Get all available models to pass to AutoModel
         models_dict = get_available_models()
         
@@ -67,16 +70,20 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             selected_model_name = auto_model.chosen_model_name
             selected_model_class = models_dict[selected_model_name]
             
+            logger.info(f"AutoModel selected: {selected_model_name}")
+            
             # Now run the analysis with the selected model
             run_analysis(selected_model_class, pdf_path, db_path)
             
             # Set the analysis result in auto_model if needed for further processing
             return
         except Exception as e:
+            logger.error(f"Error during auto model selection: {e}", exc_info=True)
             print(f"An error occurred during auto model selection: {e}")
             return
     
     # Load the PDF file for analysis
+    logger.info(f"Analyzing {pdf_path} with {model_class.__name__}")
     pdf_input = PDF.from_path(pdf_path)
     
     # Create a dynamic prompt based on the model fields
@@ -101,6 +108,8 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
         
+        logger.debug("Sending document to LLM for analysis")
+        
         # Use cached LLM invoke instead of direct API call
         response = cached_llm_invoke(
             system_message="You are a document analysis assistant that extracts structured information from documents.",
@@ -115,6 +124,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         response.llm_model = get_claude_model_name()
         
         # Print the structured result
+        logger.info(f"Successfully extracted {model_class.__name__} data")
         print(f"\nExtracted {model_class.__name__} Details:")
         print(response.model_dump_json(indent=2))
         
@@ -135,8 +145,11 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
                     json_safe_response = type(response).model_validate(json_compatible_data)
                 
                     sa_instance = save_model_to_db(json_safe_response, sa_models, session)
+                    logger.info(f"Saved to database: {db_path}, table: {sa_instance.__tablename__}, ID: {sa_instance.id}")
                     print(f"\nSaved to database: {db_path}, table: {sa_instance.__tablename__}, ID: {sa_instance.id}")
             except Exception as e:
+                logger.error(f"Error saving to database: {e}", exc_info=True)
                 print(f"Error saving to database: {e}")
     except Exception as e:
+        logger.error(f"Error during analysis: {e}", exc_info=True)
         print(f"An error occurred during analysis: {e}")

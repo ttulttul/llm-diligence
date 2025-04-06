@@ -8,6 +8,7 @@ load_dotenv()
 
 # Import from the analysis module
 from analysis import get_available_models, list_available_models, run_analysis
+from utils import logger, configure_logger
 
 
 def main():
@@ -20,14 +21,22 @@ def main():
     parser.add_argument("--pdf", type=str, default="software_license.pdf", 
                        help="Path to the PDF file (default: software_license.pdf)")
     parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
+    parser.add_argument("--log-level", type=str, default="INFO", 
+                       choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                       help="Set the logging level (default: INFO)")
+    parser.add_argument("--log-file", type=str, help="Path to the log file")
     
     args = parser.parse_args()
+    
+    # Configure logger with command line arguments
+    configure_logger(args.log_level, args.log_file)
+    logger.debug("Diligentizer starting up")
     
     # Get all available models
     models_dict = get_available_models()
     
     if not models_dict:
-        print("Error: No models found in the models directory.")
+        logger.error("No models found in the models directory.")
         return 1
         
     if args.list:

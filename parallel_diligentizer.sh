@@ -15,6 +15,8 @@ MODEL_TYPE="auto"
 MODEL_NAME=""
 DATABASE_FILE=""
 VERBOSE=0
+LOG_LEVEL="INFO"
+LOG_FILE=""
 TOTAL_PROCESSED=0
 TOTAL_FILES=0
 
@@ -28,6 +30,8 @@ function show_usage {
     echo "  -a, --auto               Use auto model detection (default)"
     echo "  -d, --db DATABASE_FILE   Save results to SQLite database"
     echo "  -v, --verbose            Show verbose output"
+    echo "  -l, --log-level LEVEL    Set log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+    echo "  -f, --log-file FILE      Write logs to file"
     echo "  -h, --help               Show this help message"
     echo ""
     echo "Example:"
@@ -41,13 +45,15 @@ process_pdf() {
     local model_arg="$2"
     local db_arg="$3"
     local verbose="$4"
+    local log_level="$5"
+    local log_file="$6"
     
     if [[ $verbose -eq 1 ]]; then
         echo "Processing: $pdf_file"
-        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg
+        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file
         echo "Completed: $pdf_file"
     else
-        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg >/dev/null 2>&1
+        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg --log-level "$log_level" $log_file >/dev/null 2>&1
         # Update progress (safely for concurrent processes)
         local tmp_count
         tmp_count=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
@@ -85,6 +91,14 @@ while [[ $# -gt 0 ]]; do
         -v|--verbose)
             VERBOSE=1
             shift
+            ;;
+        -l|--log-level)
+            LOG_LEVEL="$2"
+            shift 2
+            ;;
+        -f|--log-file)
+            LOG_FILE="$2"
+            shift 2
             ;;
         -h|--help)
             show_usage
@@ -138,6 +152,13 @@ else
     DB_ARG=""
 fi
 
+# Prepare log file argument
+if [[ -n "$LOG_FILE" ]]; then
+    LOG_FILE_ARG="--log-file $LOG_FILE"
+else
+    LOG_FILE_ARG=""
+fi
+
 # Find all PDF files in the target directory and count them
 echo "Finding PDF files in '$TARGET_DIR'..."
 TOTAL_FILES=$(find "$TARGET_DIR" -type f -iname "*.pdf" | wc -l | tr -d ' ')
@@ -157,11 +178,11 @@ echo 0 > /tmp/diligentizer_count
 if [[ $VERBOSE -eq 1 ]]; then
     # Verbose: Show output from each job
     find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
-    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 1" {}
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 1 '$LOG_LEVEL' '$LOG_FILE_ARG'" {}
 else
     # Silent: Show progress counter
     find "$TARGET_DIR" -type f -iname "*.pdf" -print0 | \
-    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 0" {}
+    xargs -0 -P "$MAX_JOBS" -n 1 bash -c "export TOTAL_FILES=$TOTAL_FILES; process_pdf \"\$0\" '$MODEL_ARG' '$DB_ARG' 0 '$LOG_LEVEL' '$LOG_FILE_ARG'" {}
     echo # Print newline after progress display
 fi
 
