@@ -10,6 +10,7 @@ from instructor.multimodal import PDF
 import models
 from models.base import DiligentizerModel
 from utils.llm import cached_llm_invoke
+from utils.db import setup_database, save_model_to_db
 
 def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
     """Discover all available models in the models package."""
@@ -48,7 +49,7 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]]) -> No
                 print(f"   - {field_name}: {field_info.description}")
         print("-" * 60)
 
-def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software_license.pdf") -> None:
+def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software_license.pdf", db_path: Optional[str] = None) -> None:
     """Run the analysis with the selected model."""
 
     # Check if this is the auto model
@@ -65,7 +66,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             selected_model_class = models_dict[selected_model_name]
             
             # Now run the analysis with the selected model
-            run_analysis(selected_model_class, pdf_path)
+            run_analysis(selected_model_class, pdf_path, db_path)
             
             # Set the analysis result in auto_model if needed for further processing
             return
@@ -109,5 +110,20 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         # Print the structured result
         print(f"\nExtracted {model_class.__name__} Details:")
         print(response.model_dump_json(indent=2))
+        
+        # Save to database if requested
+        if db_path:
+            try:
+                # Set up the database with all available models
+                models_dict = get_available_models()
+                model_classes = list(models_dict.values())
+                engine, Session, sa_models = setup_database(db_path, model_classes)
+                
+                # Create a session and save the model
+                with Session() as session:
+                    sa_instance = save_model_to_db(response, sa_models, session)
+                    print(f"\nSaved to database: {db_path}, table: {sa_instance.__tablename__}, ID: {sa_instance.id}")
+            except Exception as e:
+                print(f"Error saving to database: {e}")
     except Exception as e:
         print(f"An error occurred during analysis: {e}")

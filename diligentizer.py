@@ -1,5 +1,6 @@
 import sys
 import argparse
+import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -18,6 +19,7 @@ def main():
     group.add_argument("--auto", action="store_true", help="Automatically select the most appropriate model")
     parser.add_argument("--pdf", type=str, default="software_license.pdf", 
                        help="Path to the PDF file (default: software_license.pdf)")
+    parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
     
     args = parser.parse_args()
     
@@ -71,7 +73,7 @@ def main():
     # Run the analysis with the selected model
     model_class = models_dict[selected_model]
     print(f"Using model: {selected_model} ({model_class.__name__})")
-    run_analysis(model_class, args.pdf)
+    run_analysis(model_class, args.pdf, args.sqlite)
     
     return 0
 
