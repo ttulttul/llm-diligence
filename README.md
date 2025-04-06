@@ -92,6 +92,7 @@ The parallel processing script supports:
 - Automatic model detection or specific model selection
 - Database storage for all processed files
 - Recursive directory traversal
+- No external dependencies (uses built-in macOS find and xargs)
 
 For more options:
 ```bash

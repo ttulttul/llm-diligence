@@ -5,7 +5,7 @@
 # Usage: ./parallel_diligentizer.sh [options] <directory>
 #
 # This script finds all PDF files in the specified directory (recursively)
-# and processes them in parallel using diligentizer.py.
+# and processes them in parallel using diligentizer.py with find and xargs.
 
 set -e
 
@@ -15,6 +15,8 @@ MODEL_TYPE="auto"
 MODEL_NAME=""
 DATABASE_FILE=""
 VERBOSE=0
+TOTAL_PROCESSED=0
+TOTAL_FILES=0
 
 # Function to display usage information
 function show_usage {
@@ -33,15 +35,28 @@ function show_usage {
     echo ""
 }
 
-# Check if GNU Parallel is installed
-if ! command -v parallel &> /dev/null; then
-    echo "Error: This script requires GNU Parallel."
-    echo "Please install it with one of the following commands:"
-    echo "  - macOS:   brew install parallel"
-    echo "  - Ubuntu:  sudo apt-get install parallel"
-    echo "  - CentOS:  sudo yum install parallel"
-    exit 1
-fi
+# Create a function to process a PDF file
+process_pdf() {
+    local pdf_file="$1"
+    local model_arg="$2"
+    local db_arg="$3"
+    local verbose="$4"
+    
+    if [[ $verbose -eq 1 ]]; then
+        echo "Processing: $pdf_file"
+        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg
+        echo "Completed: $pdf_file"
+    else
+        python diligentizer.py $model_arg --pdf "$pdf_file" $db_arg >/dev/null 2>&1
+        # Update progress (safely for concurrent processes)
+        local tmp_count
+        tmp_count=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
+        echo $((tmp_count + 1)) > /tmp/diligentizer_count
+        local current=$(cat /tmp/diligentizer_count 2>/dev/null || echo 0)
+        printf "\rProcessed %d/%d files (%.1f%%)" $current $TOTAL_FILES $(echo "scale=1; $current*100/$TOTAL_FILES" | bc)
+    fi
+}
+export -f process_pdf
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -124,22 +139,29 @@ echo "Finding PDF files in '$TARGET_DIR'..."
 PDF_FILES=$(find "$TARGET_DIR" -type f -iname "*.pdf" | sort)
 
 # Count how many files we found
-FILE_COUNT=$(echo "$PDF_FILES" | wc -l | tr -d ' ')
-if [[ $FILE_COUNT -eq 0 ]]; then
+TOTAL_FILES=$(echo "$PDF_FILES" | wc -l | tr -d ' ')
+if [[ $TOTAL_FILES -eq 0 ]]; then
     echo "No PDF files found in '$TARGET_DIR'."
     exit 0
 fi
 
-echo "Found $FILE_COUNT PDF files to process."
+echo "Found $TOTAL_FILES PDF files to process."
 echo "Processing with $MAX_JOBS parallel jobs..."
 
-# Process each PDF file in parallel
+# Initialize counter file
+echo 0 > /tmp/diligentizer_count
+
+# Process files in parallel using find and xargs
 if [[ $VERBOSE -eq 1 ]]; then
     # Verbose: Show output from each job
-    echo "$PDF_FILES" | parallel -j $MAX_JOBS "echo 'Processing: {}'; python diligentizer.py $MODEL_ARG --pdf {} $DB_ARG; echo 'Completed: {}';"
+    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 1"
 else
-    # Silent: Show progress bar only
-    echo "$PDF_FILES" | parallel -j $MAX_JOBS --bar "python diligentizer.py $MODEL_ARG --pdf {} $DB_ARG"
+    # Silent: Show progress counter
+    echo "$PDF_FILES" | xargs -P "$MAX_JOBS" -I{} bash -c "process_pdf '{}' '$MODEL_ARG' '$DB_ARG' 0"
+    echo # Print newline after progress display
 fi
 
-echo "All done! Processed $FILE_COUNT PDF files."
+# Clean up
+rm -f /tmp/diligentizer_count
+
+echo "All done! Processed $TOTAL_FILES PDF files."
