@@ -547,14 +547,11 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
         session.rollback()
         # If there was an error related to relationships, try to debug it
         if "'bool' object has no attribute '_sa_instance_state'" in str(e):
-            # Log problematic data for debugging
-            for key, value in data.items():
-                if isinstance(value, bool):
-                    # Fix the issue by removing any boolean values that might be confused as relationship objects
-                    data.pop(key, None)
+            # Create a new dict excluding boolean values that might be confused as relationship objects
+            fixed_data = {k: v for k, v in data.items() if not isinstance(v, bool)}
             
             # Try again with fixed data
-            sa_instance = sa_model_class(**data)
+            sa_instance = sa_model_class(**fixed_data)
             session.add(sa_instance)
             session.commit()
             return sa_instance
