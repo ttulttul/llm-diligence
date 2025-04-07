@@ -428,10 +428,16 @@ def get_or_create_entity(session, entity_model, entity_name, extra_fields=None):
     
     return instance
 
-def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
+def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, sa_models=None):
     """
     Convert a Pydantic model instance to a SQLAlchemy model instance and save it.
     Handles nested models, entity normalization, and complex types.
+    
+    Args:
+        pydantic_instance: Pydantic model instance to convert
+        sa_model_class: SQLAlchemy model class to convert to
+        session: SQLAlchemy session
+        sa_models: Dictionary of all SQLAlchemy model classes
     """
     # Identify entity fields for potential normalization
     entity_fields = identify_entity_fields(type(pydantic_instance))
@@ -459,12 +465,10 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
         normalized = False
         for entity_name, fields in entity_fields.items():
             if field_name in fields:
-                # Find the corresponding entity model
+                # Find the corresponding entity model from sa_models
                 entity_model = None
-                for model_name, model_class in session.registry._class_registry.items():
-                    if model_name == f"{entity_name}Table":
-                        entity_model = model_class
-                        break
+                if sa_models:
+                    entity_model = sa_models.get(entity_name)
                 
                 if entity_model and value:
                     # Gather extra fields for the entity based on its type
@@ -559,11 +563,11 @@ def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Sessio
         raise ValueError(f"No SQLAlchemy model found for {model_class_name}")
     
     try:
-        return pydantic_to_sqlalchemy(model_instance, sa_model_class, session)
+        return pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
     except TypeError as e:
         if "not JSON serializable" in str(e):
             # Fallback: Use JSON serialization with custom encoder as a last resort
             model_dict = json.loads(json.dumps(model_instance.model_dump(), cls=DateTimeEncoder))
             model_instance = type(model_instance).model_validate(model_dict)
-            return pydantic_to_sqlalchemy(model_instance, sa_model_class, session)
+            return pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
         raise
