@@ -1,17 +1,17 @@
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, BaseModel
 from typing import List, Optional
 from datetime import date
 from .base import DiligentizerModel
 import re
 
-class Salary(DiligentizerModel):
+class Salary(BaseModel):
     """Represents salary details"""
     annual_amount: float = Field(..., description="The gross annual salary amount.")
     currency: str = Field(..., description="The currency of the salary (e.g., CAD, USD).")
     payment_frequency: Optional[str] = Field(None, description="How often the salary is paid (e.g., 'semi-monthly', 'bi-weekly', 'monthly').")
     effective_date: Optional[date] = Field(None, description="The date from which this salary amount is effective.")
 
-class Bonus(DiligentizerModel):
+class Bonus(BaseModel):
     """Represents bonus details"""
     description: str = Field(..., description="Description of the bonus structure (e.g., performance-based, signing bonus).")
     amount: Optional[float] = Field(None, description="The specific bonus amount, if fixed.")
@@ -20,13 +20,13 @@ class Bonus(DiligentizerModel):
     timing: Optional[str] = Field(None, description="When the bonus is typically paid or assessed (e.g., 'end of March each year', 'within 10 days of execution').")
     conditions: Optional[str] = Field(None, description="Conditions for receiving the bonus (e.g., 'at the sole discretion of the Company', 'upon successful completion of probation').")
 
-class TerminationClauses(DiligentizerModel):
+class TerminationClauses(BaseModel):
     """Details regarding contract termination"""
     for_cause: Optional[str] = Field(None, description="Conditions and consequences of termination for just cause.")
     without_cause_employer: Optional[str] = Field(None, description="Conditions and notice/pay requirements for termination by the employer without just cause (e.g., reference to statutory minimums like BC Employment Standards Act).")
     resignation_employee: Optional[str] = Field(None, description="Notice period required for employee resignation (e.g., 'two weeks prior written notice').")
 
-class RestrictiveCovenants(DiligentizerModel):
+class RestrictiveCovenants(BaseModel):
     """Details on non-solicitation, non-competition, etc."""
     non_solicitation_duration_months: Optional[int] = Field(None, description="Duration in months post-termination for non-solicitation clause.")
     non_solicitation_scope: Optional[str] = Field(None, description="Description of who/what cannot be solicited (e.g., employees, clients, suppliers).")

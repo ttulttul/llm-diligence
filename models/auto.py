@@ -10,7 +10,7 @@ import sys
 
 from utils.llm import cached_llm_invoke
 
-class ModelSelection(DiligentizerModel):
+class ModelSelection(BaseModel):
     """Model used to receive the selected model name from the LLM."""
     model_name: str = Field(..., description="The name of the most appropriate model for this document")
 

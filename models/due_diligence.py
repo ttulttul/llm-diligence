@@ -1,4 +1,4 @@
-from pydantic import Field, EmailStr, HttpUrl, validator, constr
+from pydantic import Field, EmailStr, HttpUrl, validator, constr, BaseModel
 from typing import List, Dict, Optional, Union, Set, Tuple, Any
 from datetime import date, datetime
 from enum import Enum
@@ -24,7 +24,7 @@ class ConfidentialityLevel(str, Enum):
     RESTRICTED = "restricted"
 
 
-class DocumentMetadata(DiligentizerModel):
+class DocumentMetadata(BaseModel):
     """Base metadata for all diligence documents"""
     document_id: str = Field(..., description="Unique identifier for the document")
     title: str = Field(..., description="Document title")
