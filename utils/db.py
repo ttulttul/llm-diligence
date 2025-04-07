@@ -40,12 +40,14 @@ class EntityDefinition:
         self.sa_model = None
         self.references = {}  # Store references to this entity from other models
 
-# Define common entities for normalization
+# Define common entities for normalization based on the models in the codebase
 COMMON_ENTITIES = [
-    EntityDefinition("Customer", ["name", "customer_name", "client_name", "client"]),
-    EntityDefinition("Employee", ["employee_name", "staff_name", "personnel_name"]),
-    EntityDefinition("Company", ["company_name", "organization_name", "org_name", "corporate_name"]),
-    EntityDefinition("Product", ["product_name", "item_name", "service_name"]),
+    EntityDefinition("Customer", ["name", "customer_name", "client_name", "client", "licensee", "counterparty"]),
+    EntityDefinition("Employee", ["employee_name", "staff_name", "personnel_name", "employee"]),
+    EntityDefinition("Company", ["company_name", "organization_name", "org_name", "corporate_name", "employer", "licensor", "company"]),
+    EntityDefinition("Product", ["product_name", "item_name", "service_name", "product", "service_covered"]),
+    EntityDefinition("Contract", ["contract_id", "agreement_id", "document_id"]),
+    EntityDefinition("Jurisdiction", ["governing_law", "governing_law_jurisdiction", "jurisdiction"]),
 ]
 
 def identify_entity_fields(pydantic_model: Type[BaseModel]) -> Dict[str, List[str]]:
@@ -56,7 +58,23 @@ def identify_entity_fields(pydantic_model: Type[BaseModel]) -> Dict[str, List[st
     """
     entity_fields = {}
     
-    for field_name, field_info in pydantic_model.model_fields.items():
+    # Check if model has fields attribute (some older Pydantic versions use __fields__)
+    model_fields = getattr(pydantic_model, "model_fields", None)
+    if model_fields is None:
+        model_fields = getattr(pydantic_model, "__fields__", {})
+    
+    for field_name, field_info in model_fields.items():
+        # Skip fields that are complex objects which shouldn't be normalized
+        if hasattr(field_info, "annotation"):
+            python_type = field_info.annotation
+            # Skip list and dict fields, as they typically aren't direct entity references
+            if "List" in str(python_type) or "Dict" in str(python_type):
+                continue
+            
+            # Skip enum types
+            if "Enum" in str(python_type) or isinstance(python_type, type) and issubclass(python_type, Enum):
+                continue
+                
         # Check if this field matches any common entity
         for entity in COMMON_ENTITIES:
             # Simple case: field name exactly matches one of the identifier fields
@@ -70,15 +88,18 @@ def identify_entity_fields(pydantic_model: Type[BaseModel]) -> Dict[str, List[st
             # For example "primary_customer_name" should match "customer_name"
             for identifier in entity.identifier_fields:
                 if identifier in field_name:
-                    if entity.name not in entity_fields:
-                        entity_fields[entity.name] = []
-                    entity_fields[entity.name].append(field_name)
-                    break
+                    # Avoid false positives - make sure it's truly related
+                    # For example, "customer_name_label" shouldn't match if just "name" is an identifier
+                    if len(identifier) > 4 or identifier == field_name or field_name.startswith(identifier + "_") or field_name.endswith("_" + identifier):
+                        if entity.name not in entity_fields:
+                            entity_fields[entity.name] = []
+                        entity_fields[entity.name].append(field_name)
+                        break
     
     return entity_fields
 
 def create_entity_models(base=Base):
-    """Create SQLAlchemy models for common entities."""
+    """Create SQLAlchemy models for common entities with additional metadata."""
     entity_models = {}
     
     for entity in COMMON_ENTITIES:
@@ -87,9 +108,50 @@ def create_entity_models(base=Base):
             "id": sa.Column(sa.Integer, primary_key=True),
             # All entities have a name column that stores the primary name
             "name": sa.Column(sa.String, unique=True, nullable=False),
-            # Add created_at for tracking
+            # Add common metadata fields
             "created_at": sa.Column(sa.DateTime, default=datetime.utcnow),
+            "updated_at": sa.Column(sa.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow),
+            "description": sa.Column(sa.String, nullable=True),
+            "metadata_": sa.Column(sa.JSON, nullable=True),  # Use metadata_ to avoid SQLAlchemy reserved keyword
         }
+        
+        # Add entity-specific columns based on the entity type
+        if entity.name == "Customer":
+            columns.update({
+                "contact_email": sa.Column(sa.String, nullable=True),
+                "contact_phone": sa.Column(sa.String, nullable=True),
+                "is_active": sa.Column(sa.Boolean, default=True),
+            })
+        elif entity.name == "Employee":
+            columns.update({
+                "title": sa.Column(sa.String, nullable=True),
+                "department": sa.Column(sa.String, nullable=True),
+                "hire_date": sa.Column(sa.Date, nullable=True),
+            })
+        elif entity.name == "Company":
+            columns.update({
+                "website": sa.Column(sa.String, nullable=True),
+                "industry": sa.Column(sa.String, nullable=True),
+                "incorporated_date": sa.Column(sa.Date, nullable=True),
+            })
+        elif entity.name == "Product":
+            columns.update({
+                "version": sa.Column(sa.String, nullable=True),
+                "product_type": sa.Column(sa.String, nullable=True),
+                "is_active": sa.Column(sa.Boolean, default=True),
+            })
+        elif entity.name == "Contract":
+            columns.update({
+                "effective_date": sa.Column(sa.Date, nullable=True),
+                "expiration_date": sa.Column(sa.Date, nullable=True),
+                "contract_type": sa.Column(sa.String, nullable=True),
+            })
+        elif entity.name == "Jurisdiction":
+            columns.update({
+                "country": sa.Column(sa.String, nullable=True),
+                "region": sa.Column(sa.String, nullable=True),  # State/Province
+                "is_international": sa.Column(sa.Boolean, nullable=True),
+            })
         
         # Create the SQLAlchemy model for this entity
         model_name = f"{entity.name}Table"
@@ -107,6 +169,8 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
     columns = {
         "__tablename__": table_name,
         "id": sa.Column(sa.Integer, primary_key=True),
+        "created_at": sa.Column(sa.DateTime, default=datetime.utcnow),
+        "updated_at": sa.Column(sa.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow),
     }
     
     # Identify entity fields for normalization
@@ -115,8 +179,17 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
     # Track relationships to add after model creation
     relationships = {}
     
+    # Check if model has fields attribute (some older Pydantic versions use __fields__)
+    model_fields = getattr(pydantic_model, "model_fields", None)
+    if model_fields is None:
+        model_fields = getattr(pydantic_model, "__fields__", {})
+    
     # Process the Pydantic model fields and convert to SQLAlchemy columns
-    for field_name, field_info in pydantic_model.model_fields.items():
+    for field_name, field_info in model_fields.items():
+        # Skip the 'analyzed_at' field from the DiligentizerModel base class since we have created_at
+        if field_name == 'analyzed_at':
+            continue
+            
         # Check if this field should be normalized
         normalized = False
         
@@ -142,7 +215,7 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
                 relationships[relationship_name] = (entity_model.__tablename__, fk_column_name)
                 
                 # Record this reference in the entity for potential back-references
-                if entity_name in COMMON_ENTITIES:
+                if entity_name in [e.name for e in COMMON_ENTITIES]:
                     for entity in COMMON_ENTITIES:
                         if entity.name == entity_name:
                             if pydantic_model.__name__ not in entity.references:
@@ -164,9 +237,76 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
         else:
             attr_name = column_name
         
-        # Choose column type based on the Python type
-        python_type = field_info.annotation
-        if python_type == str:
+        # Get field type
+        if hasattr(field_info, "annotation"):
+            python_type = field_info.annotation
+        else:
+            python_type = field_info.type_
+        
+        # Handle nested Pydantic models (from the specific models we've seen)
+        if hasattr(python_type, "__origin__") and python_type.__origin__ is list:
+            # For List[BaseModel] types 
+            if hasattr(python_type, "__args__") and len(python_type.__args__) > 0:
+                arg_type = python_type.__args__[0]
+                if isinstance(arg_type, type) and issubclass(arg_type, BaseModel):
+                    column = sa.Column(column_name, sa.JSON)
+                else:
+                    column = sa.Column(column_name, sa.JSON)
+            else:
+                column = sa.Column(column_name, sa.JSON)
+        
+        # Handle enums (which are common in the models we've seen)
+        elif isinstance(python_type, type) and issubclass(python_type, Enum):
+            # Store enum as string
+            column = sa.Column(column_name, sa.String)
+        
+        # Handle optional types
+        elif hasattr(python_type, "__origin__") and python_type.__origin__ is Union:
+            # For Optional[X] which is Union[X, None]
+            if hasattr(python_type, "__args__") and type(None) in python_type.__args__:
+                # Get the non-None type
+                non_none_types = [t for t in python_type.__args__ if t is not type(None)]
+                if non_none_types:
+                    actual_type = non_none_types[0]
+                    # Recurse to handle the actual type, but make nullable
+                    if actual_type == str:
+                        column = sa.Column(column_name, sa.String, nullable=True)
+                    elif actual_type == int:
+                        column = sa.Column(column_name, sa.Integer, nullable=True)
+                    elif actual_type == float:
+                        column = sa.Column(column_name, sa.Float, nullable=True)
+                    elif actual_type == bool:
+                        column = sa.Column(column_name, sa.Boolean, nullable=True)
+                    elif actual_type == dict or "Dict" in str(actual_type):
+                        column = sa.Column(column_name, sa.JSON, nullable=True)
+                    elif actual_type == list or "List" in str(actual_type):
+                        column = sa.Column(column_name, sa.JSON, nullable=True)
+                    elif actual_type == date or actual_type == datetime:
+                        column = sa.Column(column_name, sa.DateTime, nullable=True)
+                    elif isinstance(actual_type, type) and issubclass(actual_type, Enum):
+                        column = sa.Column(column_name, sa.String, nullable=True)
+                    elif isinstance(actual_type, type) and issubclass(actual_type, BaseModel):
+                        column = sa.Column(column_name, sa.JSON, nullable=True)
+                    else:
+                        column = sa.Column(column_name, sa.JSON, nullable=True)
+                else:
+                    column = sa.Column(column_name, sa.JSON, nullable=True)
+            else:
+                # Regular union type
+                column = sa.Column(column_name, sa.JSON)
+        
+        # Handle date and datetime types which are common in the models
+        elif python_type == date:
+            column = sa.Column(column_name, sa.Date)
+        elif python_type == datetime:
+            column = sa.Column(column_name, sa.DateTime)
+        
+        # Handle nested Pydantic models
+        elif isinstance(python_type, type) and issubclass(python_type, BaseModel):
+            column = sa.Column(column_name, sa.JSON)
+        
+        # Regular primitive types
+        elif python_type == str:
             column = sa.Column(column_name, sa.String)
         elif python_type == int:
             column = sa.Column(column_name, sa.Integer)
@@ -189,9 +329,27 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
     
     # Add relationships
     for rel_name, (target_table, fk_column) in relationships.items():
+        # Figure out the target class name based on table name
+        # Need to transform 'customer' to 'CustomerTable'
+        class_name_parts = target_table.split('_')
+        class_name = ''.join(part.capitalize() for part in class_name_parts) + 'Table'
+        
+        # Handle more complex relationship names (deal with potential conflicts)
+        if rel_name == '':
+            rel_name = target_table
+            
+        # Remove any trailing underscores
+        rel_name = rel_name.rstrip('_')
+        
+        # Create the relationship
         setattr(model_class, rel_name, relationship(
-            target_table.replace("_", "").capitalize() + "Table",
-            foreign_keys=[getattr(model_class, fk_column)]
+            class_name,
+            foreign_keys=[getattr(model_class, fk_column)],
+            backref=backref(
+                f"{table_name}_collection", 
+                lazy='dynamic',
+                cascade="all, delete-orphan"
+            )
         ))
     
     return model_class
@@ -231,25 +389,71 @@ def serialize_for_db(obj):
     else:
         return obj
 
-def get_or_create_entity(session, entity_model, entity_name):
-    """Get an existing entity instance or create a new one."""
+def get_or_create_entity(session, entity_model, entity_name, extra_fields=None):
+    """
+    Get an existing entity instance or create a new one.
+    
+    Args:
+        session: SQLAlchemy session
+        entity_model: The entity model class
+        entity_name: The name of the entity
+        extra_fields: Optional dict of additional fields to set on newly created entities
+        
+    Returns:
+        Entity instance
+    """
+    if not entity_name:
+        return None
+        
+    # Strip whitespace and check if empty
+    if isinstance(entity_name, str):
+        entity_name = entity_name.strip()
+        if not entity_name:
+            return None
+    
+    # Query for existing entity
     instance = session.query(entity_model).filter_by(name=entity_name).first()
     if not instance:
-        instance = entity_model(name=entity_name)
+        # Create a new entity with the provided name
+        fields = {'name': entity_name}
+        
+        # Add any extra fields provided
+        if extra_fields:
+            fields.update(extra_fields)
+            
+        instance = entity_model(**fields)
         session.add(instance)
         session.flush()  # This will assign an ID without committing the transaction
+    
     return instance
 
 def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
-    """Convert a Pydantic model instance to a SQLAlchemy model instance and save it."""
+    """
+    Convert a Pydantic model instance to a SQLAlchemy model instance and save it.
+    Handles nested models, entity normalization, and complex types.
+    """
     # Identify entity fields for potential normalization
     entity_fields = identify_entity_fields(type(pydantic_instance))
     
     # Create a dict with SQLAlchemy attribute names
     data = {}
-    for field_name in pydantic_instance.model_fields:
+    
+    # Get model fields based on Pydantic version
+    model_fields = getattr(pydantic_instance.__class__, "model_fields", None)
+    if model_fields is None:
+        model_fields = getattr(pydantic_instance.__class__, "__fields__", {})
+    
+    for field_name in model_fields:
+        # Skip analyzed_at as we use created_at and updated_at
+        if field_name == 'analyzed_at':
+            continue
+            
         value = getattr(pydantic_instance, field_name)
         
+        # Skip None values for optional fields
+        if value is None:
+            continue
+            
         # Check if this field should be normalized
         normalized = False
         for entity_name, fields in entity_fields.items():
@@ -262,13 +466,29 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
                         break
                 
                 if entity_model and value:
-                    # Get or create the entity
-                    entity_instance = get_or_create_entity(session, entity_model, value)
+                    # Gather extra fields for the entity based on its type
+                    extra_fields = {}
                     
-                    # Set the foreign key value
-                    fk_field = f"{field_name}_id"
-                    data[fk_field] = entity_instance.id
-                    normalized = True
+                    # For Company entities, we might want to extract additional info
+                    if entity_name == "Company" and hasattr(pydantic_instance, "metadata"):
+                        if getattr(pydantic_instance, "metadata", None) and isinstance(pydantic_instance.metadata, dict):
+                            extra_fields["website"] = pydantic_instance.metadata.get("website")
+                            extra_fields["industry"] = pydantic_instance.metadata.get("industry")
+                    
+                    # For Customer entities, extract contact info if available
+                    if entity_name == "Customer" and hasattr(pydantic_instance, "metadata"):
+                        if getattr(pydantic_instance, "metadata", None) and isinstance(pydantic_instance.metadata, dict):
+                            extra_fields["contact_email"] = pydantic_instance.metadata.get("contact_email")
+                            extra_fields["contact_phone"] = pydantic_instance.metadata.get("contact_phone")
+                    
+                    # Get or create the entity
+                    entity_instance = get_or_create_entity(session, entity_model, value, extra_fields)
+                    
+                    if entity_instance:
+                        # Set the foreign key value
+                        fk_field = f"{field_name}_id"
+                        data[fk_field] = entity_instance.id
+                        normalized = True
                     break
         
         if normalized:
@@ -280,11 +500,27 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session):
         else:
             attr_name = field_name
         
-        # Convert nested Pydantic models to dictionaries
-        if isinstance(value, BaseModel):
-            value = value.model_dump()
-        elif isinstance(value, list) and value and isinstance(value[0], BaseModel):
-            value = [item.model_dump() for item in value]
+        # Handle different value types
+        if isinstance(value, Enum):
+            # For enum values, store the string value
+            value = value.value
+        elif isinstance(value, BaseModel):
+            # Convert nested Pydantic models to dictionaries
+            value = value.model_dump() if hasattr(value, "model_dump") else value.dict()
+        elif isinstance(value, list):
+            # Handle lists of Pydantic models
+            if value and isinstance(value[0], BaseModel):
+                value = [
+                    (item.model_dump() if hasattr(item, "model_dump") else item.dict())
+                    for item in value
+                ]
+        elif isinstance(value, dict):
+            # For dictionaries, check each value for Pydantic models
+            for k, v in list(value.items()):
+                if isinstance(v, BaseModel):
+                    value[k] = v.model_dump() if hasattr(v, "model_dump") else v.dict()
+                elif isinstance(v, Enum):
+                    value[k] = v.value
         
         # Recursively serialize datetime objects
         value = serialize_for_db(value)
