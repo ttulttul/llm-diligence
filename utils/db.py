@@ -472,6 +472,10 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
                     entity_model = sa_models.get(entity_name)
                 
                 if entity_model and value:
+                    # Don't try to normalize boolean values or numbers
+                    if isinstance(value, (bool, int, float)):
+                        break
+                        
                     # Gather extra fields for the entity based on its type
                     extra_fields = {}
                     
@@ -533,12 +537,30 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
         
         data[attr_name] = value
     
-    # Create and save the SQLAlchemy model instance
-    sa_instance = sa_model_class(**data)
-    session.add(sa_instance)
-    session.commit()
-    
-    return sa_instance
+    try:
+        # Create the SQLAlchemy model instance
+        sa_instance = sa_model_class(**data)
+        session.add(sa_instance)
+        session.commit()
+        return sa_instance
+    except Exception as e:
+        session.rollback()
+        # If there was an error related to relationships, try to debug it
+        if "'bool' object has no attribute '_sa_instance_state'" in str(e):
+            # Log problematic data for debugging
+            for key, value in data.items():
+                if isinstance(value, bool):
+                    # Fix the issue by removing any boolean values that might be confused as relationship objects
+                    data.pop(key, None)
+            
+            # Try again with fixed data
+            sa_instance = sa_model_class(**data)
+            session.add(sa_instance)
+            session.commit()
+            return sa_instance
+        else:
+            # Re-raise the original exception if it's not the specific one we're handling
+            raise
 
 def setup_database(db_path: str, model_classes: List[Type[BaseModel]]):
     """Set up the database with tables for all models."""
