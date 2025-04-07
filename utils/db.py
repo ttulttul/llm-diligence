@@ -4,7 +4,8 @@ import re
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship, backref
-from typing import Dict, Type, Any, Optional, List, Set, Tuple
+from typing import Dict, Type, Any, Optional, List, Set, Tuple, Union
+from enum import Enum
 import json
 from datetime import datetime, date
 from pydantic import BaseModel
