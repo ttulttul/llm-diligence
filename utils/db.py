@@ -342,12 +342,13 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
         # Remove any trailing underscores
         rel_name = rel_name.rstrip('_')
         
-        # Create the relationship
+        # Create the relationship with a more specific backref name to avoid conflicts
+        # Include both table name and relationship name for uniqueness
         setattr(model_class, rel_name, relationship(
             class_name,
             foreign_keys=[getattr(model_class, fk_column)],
             backref=backref(
-                f"{table_name}_collection", 
+                f"{table_name}_{rel_name}_collection", 
                 lazy='dynamic',
                 cascade="all, delete-orphan"
             )
