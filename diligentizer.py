@@ -103,9 +103,9 @@ def main():
             output_path = json_output_dir / f"{selected_model}.json"
             try:
                 with open(output_path, 'w') as f:
-                    # Use the DateTimeEncoder to handle datetime objects
-                    from utils.db import DateTimeEncoder
-                    json.dump(result.model_dump(), f, cls=DateTimeEncoder, indent=2)
+                    # Use the ModelEncoder to handle datetime objects
+                    from utils.db import ModelEncoder
+                    json.dump(result.model_dump(), f, cls=ModelEncoder, indent=2)
                 print(f"JSON output saved to: {output_path}")
                 logger.info(f"JSON output saved to: {output_path}")
             except Exception as e:

@@ -711,8 +711,8 @@ def setup_database(db_path: str, model_classes: List[Type[BaseModel]]):
     
     return engine, Session, sa_models
 
-# Custom JSON encoder that can handle datetime and date objects
-class DateTimeEncoder(json.JSONEncoder):
+# Custom JSON encoder that can handle model serialization
+class ModelEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
@@ -740,7 +740,7 @@ def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Sessio
         if "not JSON serializable" in str(e):
             # Fallback: Use JSON serialization with custom encoder as a last resort
             session.begin_nested()
-            model_dict = json.loads(json.dumps(model_instance.model_dump(), cls=DateTimeEncoder))
+            model_dict = json.loads(json.dumps(model_instance.model_dump(), cls=ModelEncoder))
             model_instance = type(model_instance).model_validate(model_dict)
             result = pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
             session.commit()
