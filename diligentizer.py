@@ -24,12 +24,8 @@ def main():
         parser.add_argument("--pdf", type=str, default="software_license.pdf", 
                            help="Path to the PDF file (default: software_license.pdf)")
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
-        parser.add_argument("--json-output", action="store_true", 
-                           help="Output results as JSON files")
-        parser.add_argument("--json-dir", type=str, default="output", 
-                           help="Directory for JSON output files (default: output)")
-        parser.add_argument("--json-prefix", type=str, default="diligentizer_", 
-                           help="Prefix for JSON output filenames (default: diligentizer_)")
+        parser.add_argument("--json-output", type=str, metavar="DIR",
+                           help="Output results as JSON files to specified directory")
         parser.add_argument("--log-level", type=str, default="INFO", 
                            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                            help="Set the logging level (default: INFO)")
@@ -93,22 +89,18 @@ def main():
         print(f"Using model: {selected_model} ({model_class.__name__})")
         
         # Create JSON output directory if needed
-        json_output_params = None
+        json_output_dir = None
         if args.json_output:
-            json_dir = Path(args.json_dir)
-            json_dir.mkdir(parents=True, exist_ok=True)
-            json_output_params = {
-                "json_dir": json_dir,
-                "json_prefix": args.json_prefix
-            }
-            logger.info(f"JSON output will be saved to: {json_dir}")
+            json_output_dir = Path(args.json_output)
+            json_output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"JSON output will be saved to: {json_output_dir}")
         
         # Run the analysis with the selected model
         result = run_analysis(model_class, args.pdf, args.sqlite)
         
         # Save result as JSON if requested
-        if json_output_params and result:
-            output_path = json_output_params["json_dir"] / f"{json_output_params['json_prefix']}{selected_model}.json"
+        if json_output_dir and result:
+            output_path = json_output_dir / f"{selected_model}.json"
             try:
                 with open(output_path, 'w') as f:
                     # Use the DateTimeEncoder to handle datetime objects
