@@ -442,7 +442,14 @@ def get_or_create_entity(session, entity_model, entity_name, extra_fields=None, 
         instance = entity_model(**fields)
         session.add(instance)
         session.flush()  # This will assign an ID without committing the transaction
+        
+        # Log the creation to help with debugging
+        print(f"Created new entity: {entity_model.__name__} - {entity_name}")
     
+    # Ensure the entity has a valid ID
+    if not instance.id:
+        session.flush()
+        
     return instance
 
 def extract_entity_data(pydantic_instance, entity_name, field_name, value):
@@ -558,6 +565,9 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
     # Create a dict with SQLAlchemy attribute names
     data = {}
     
+    # Track entities created/updated during this operation to ensure they're committed
+    created_entities = []
+    
     # Get model fields based on Pydantic version
     model_fields = getattr(pydantic_instance.__class__, "model_fields", None)
     if model_fields is None:
@@ -598,6 +608,8 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
                         # Set the foreign key value
                         fk_field = f"{field_name}_id"
                         data[fk_field] = entity_instance.id
+                        # Add to list of entities to ensure they're committed
+                        created_entities.append(entity_instance)
                         normalized = True
                     break
         
@@ -641,7 +653,14 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
         # Create the SQLAlchemy model instance
         sa_instance = sa_model_class(**data)
         session.add(sa_instance)
-        session.commit()
+        
+        # Make sure all created entities are in the session
+        for entity in created_entities:
+            if entity not in session:
+                session.add(entity)
+        
+        # Flush but don't commit yet - let the caller commit
+        session.flush()
         return sa_instance
     except Exception as e:
         session.rollback()
@@ -653,7 +672,13 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
             # Try again with fixed data
             sa_instance = sa_model_class(**fixed_data)
             session.add(sa_instance)
-            session.commit()
+            
+            # Make sure all created entities are in the session
+            for entity in created_entities:
+                if entity not in session:
+                    session.add(entity)
+                    
+            session.flush()
             return sa_instance
         else:
             # Re-raise the original exception if it's not the specific one we're handling
@@ -683,16 +708,25 @@ def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Sessio
         raise ValueError(f"No SQLAlchemy model found for {model_class_name}")
     
     try:
+        # Begin a transaction
+        session.begin_nested()
+        
         result = pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
+        
         # Ensure changes are committed
         session.commit()
         return result
     except TypeError as e:
+        session.rollback()
         if "not JSON serializable" in str(e):
             # Fallback: Use JSON serialization with custom encoder as a last resort
+            session.begin_nested()
             model_dict = json.loads(json.dumps(model_instance.model_dump(), cls=DateTimeEncoder))
             model_instance = type(model_instance).model_validate(model_dict)
             result = pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
             session.commit()
             return result
+        raise
+    except Exception as e:
+        session.rollback()
         raise
