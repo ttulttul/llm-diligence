@@ -37,7 +37,8 @@ class EntityDefinition:
     def __init__(self, name, identifier_fields):
         self.name = name
         self.identifier_fields = identifier_fields
-        self.table_name = f"{name.lower()}"
+        # Convert CamelCase to snake_case for table name
+        self.table_name = ''.join(['_' + c.lower() if c.isupper() else c for c in name]).lstrip('_')
         self.sa_model = None
         self.references = {}  # Store references to this entity from other models
 
@@ -341,10 +342,17 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
     
     # Add relationships
     for rel_name, (target_table, fk_column) in relationships.items():
-        # Figure out the target class name based on table name
-        # Need to transform 'customer' to 'CustomerTable'
-        class_name_parts = target_table.split('_')
-        class_name = ''.join(part.capitalize() for part in class_name_parts) + 'Table'
+        # Find the entity model by table name
+        entity_model_name = None
+        for entity in COMMON_ENTITIES:
+            if entity.table_name == target_table:
+                entity_model_name = f"{entity.name}Table"
+                break
+        
+        # If not found, fall back to the old method
+        if not entity_model_name:
+            class_name_parts = target_table.split('_')
+            entity_model_name = ''.join(part.capitalize() for part in class_name_parts) + 'Table'
         
         # Handle more complex relationship names (deal with potential conflicts)
         if rel_name == '':
@@ -356,7 +364,7 @@ def create_sqlalchemy_model_from_pydantic(pydantic_model: Type[BaseModel], base=
         # Create the relationship with a more specific backref name to avoid conflicts
         # Include both table name and relationship name for uniqueness
         setattr(model_class, rel_name, relationship(
-            class_name,
+            entity_model_name,
             foreign_keys=[getattr(model_class, fk_column)],
             backref=backref(
                 f"{table_name}_{rel_name}_collection", 
