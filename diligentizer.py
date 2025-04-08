@@ -1,6 +1,8 @@
 import sys
 import argparse
 import os
+import json
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -22,6 +24,12 @@ def main():
         parser.add_argument("--pdf", type=str, default="software_license.pdf", 
                            help="Path to the PDF file (default: software_license.pdf)")
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
+        parser.add_argument("--json-output", action="store_true", 
+                           help="Output results as JSON files")
+        parser.add_argument("--json-dir", type=str, default="output", 
+                           help="Directory for JSON output files (default: output)")
+        parser.add_argument("--json-prefix", type=str, default="diligentizer_", 
+                           help="Prefix for JSON output filenames (default: diligentizer_)")
         parser.add_argument("--log-level", type=str, default="INFO", 
                            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                            help="Set the logging level (default: INFO)")
@@ -83,7 +91,34 @@ def main():
         # Run the analysis with the selected model
         model_class = models_dict[selected_model]
         print(f"Using model: {selected_model} ({model_class.__name__})")
-        run_analysis(model_class, args.pdf, args.sqlite)
+        
+        # Create JSON output directory if needed
+        json_output_params = None
+        if args.json_output:
+            json_dir = Path(args.json_dir)
+            json_dir.mkdir(parents=True, exist_ok=True)
+            json_output_params = {
+                "json_dir": json_dir,
+                "json_prefix": args.json_prefix
+            }
+            logger.info(f"JSON output will be saved to: {json_dir}")
+        
+        # Run the analysis with the selected model
+        result = run_analysis(model_class, args.pdf, args.sqlite)
+        
+        # Save result as JSON if requested
+        if json_output_params and result:
+            output_path = json_output_params["json_dir"] / f"{json_output_params['json_prefix']}{selected_model}.json"
+            try:
+                with open(output_path, 'w') as f:
+                    # Use the DateTimeEncoder to handle datetime objects
+                    from utils.db import DateTimeEncoder
+                    json.dump(result.model_dump(), f, cls=DateTimeEncoder, indent=2)
+                print(f"JSON output saved to: {output_path}")
+                logger.info(f"JSON output saved to: {output_path}")
+            except Exception as e:
+                logger.error(f"Failed to save JSON output: {e}")
+                print(f"Error saving JSON output: {e}")
         
         return 0
     except KeyboardInterrupt:
