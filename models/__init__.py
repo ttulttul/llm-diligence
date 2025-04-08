@@ -1,4 +1,14 @@
 # This file makes the models directory a Python package
+import json
+from datetime import datetime, date
+
+# Custom JSON encoder that can handle model serialization
+class ModelEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+
 from .base import DiligentizerModel
 from .contracts import EmploymentContract
 from .financial import FinancialStatement

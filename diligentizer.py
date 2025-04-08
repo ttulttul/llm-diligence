@@ -104,7 +104,7 @@ def main():
             try:
                 with open(output_path, 'w') as f:
                     # Use the ModelEncoder to handle datetime objects
-                    from utils.db import ModelEncoder
+                    from models import ModelEncoder
                     json.dump(result.model_dump(), f, cls=ModelEncoder, indent=2)
                 print(f"JSON output saved to: {output_path}")
                 logger.info(f"JSON output saved to: {output_path}")

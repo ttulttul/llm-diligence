@@ -711,12 +711,7 @@ def setup_database(db_path: str, model_classes: List[Type[BaseModel]]):
     
     return engine, Session, sa_models
 
-# Custom JSON encoder that can handle model serialization
-class ModelEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        return super().default(obj)
+from models import ModelEncoder
 
 def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Session):
     """Save a model instance to the database."""
