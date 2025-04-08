@@ -8,16 +8,25 @@ from models import SoftwareLicenseAgreement, EmploymentContract, AutoModel
 
 class TestAnalyzer:
     
+    # Helper class for tests
+    class AttributeDict(dict):
+        """A dictionary that allows attribute access to its keys."""
+        def __init__(self, *args, **kwargs):
+            super(TestAnalyzer.AttributeDict, self).__init__(*args, **kwargs)
+            self.__dict__ = self
+    
     @patch('analysis.analyzer.cached_llm_invoke')
     def test_run_analysis_software_license(self, mock_llm_invoke, mock_llm_response_license, mock_pdf_path):
         """Test analyzing a software license agreement."""
-        # Setup the mock to return the parsed JSON instead of a raw string
-        # This avoids the error when the analyzer tries to set attributes on the response
+        # Parse the mock response
         if isinstance(mock_llm_response_license, str):
-            mock_response = json.loads(mock_llm_response_license)
+            mock_data = json.loads(mock_llm_response_license)
         else:
-            mock_response = mock_llm_response_license
-            
+            mock_data = mock_llm_response_license
+        
+        # Create a dict that can also have attributes set
+        mock_response = self.AttributeDict(mock_data)
+        
         mock_llm_invoke.return_value = mock_response
         
         # Run the analysis
@@ -37,12 +46,15 @@ class TestAnalyzer:
     @patch('analysis.analyzer.cached_llm_invoke')
     def test_run_analysis_employment_contract(self, mock_llm_invoke, mock_llm_response_employment, mock_pdf_path):
         """Test analyzing an employment contract."""
-        # Setup the mock to return the parsed JSON instead of a raw string
+        # Parse the mock response
         if isinstance(mock_llm_response_employment, str):
-            mock_response = json.loads(mock_llm_response_employment)
+            mock_data = json.loads(mock_llm_response_employment)
         else:
-            mock_response = mock_llm_response_employment
-            
+            mock_data = mock_llm_response_employment
+        
+        # Create a dict that can also have attributes set
+        mock_response = self.AttributeDict(mock_data)
+        
         mock_llm_invoke.return_value = mock_response
         
         # Run the analysis

@@ -64,7 +64,10 @@ def mock_llm_response_license():
         "governing_law": "California",
         "limitations_of_liability": True,
         "warranty_period": 90,
-        "maintenance_included": True
+        "maintenance_included": True,
+        # Adding fields that appear to be expected by run_analysis
+        "source_filename": None,
+        "analyzed_at": "2023-01-01T12:00:00"
     })
 
 @pytest.fixture
@@ -83,7 +86,10 @@ def mock_llm_response_employment():
         },
         "term_length": 12,
         "at_will": True,
-        "non_compete_months": 6
+        "non_compete_months": 6,
+        # Adding fields that appear to be expected by run_analysis
+        "source_filename": None,
+        "analyzed_at": "2023-02-15T10:00:00"
     })
 
 @pytest.fixture
