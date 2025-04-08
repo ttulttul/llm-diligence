@@ -10,10 +10,19 @@ class TestAnalyzer:
     
     # Helper class for tests
     class AttributeDict(dict):
-        """A dictionary that allows attribute access to its keys."""
+        """A dictionary that allows attribute access to its keys and simulates Pydantic model methods."""
         def __init__(self, *args, **kwargs):
             super(TestAnalyzer.AttributeDict, self).__init__(*args, **kwargs)
             self.__dict__ = self
+            
+        def model_dump_json(self, **kwargs):
+            """Simulate Pydantic's model_dump_json method."""
+            import json
+            return json.dumps(self, **kwargs)
+            
+        def model_dump(self, **kwargs):
+            """Simulate Pydantic's model_dump method."""
+            return dict(self)
     
     @patch('analysis.analyzer.cached_llm_invoke')
     def test_run_analysis_software_license(self, mock_llm_invoke, mock_llm_response_license, mock_pdf_path):

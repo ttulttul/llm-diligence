@@ -10,6 +10,21 @@ from models import SoftwareLicenseAgreement, EmploymentContract
 
 @pytest.mark.integration
 class TestIntegration:
+    # Helper class for tests
+    class AttributeDict(dict):
+        """A dictionary that allows attribute access to its keys and simulates Pydantic model methods."""
+        def __init__(self, *args, **kwargs):
+            super(TestIntegration.AttributeDict, self).__init__(*args, **kwargs)
+            self.__dict__ = self
+            
+        def model_dump_json(self, **kwargs):
+            """Simulate Pydantic's model_dump_json method."""
+            import json
+            return json.dumps(self, **kwargs)
+            
+        def model_dump(self, **kwargs):
+            """Simulate Pydantic's model_dump method."""
+            return dict(self)
     
     @patch('utils.llm.cached_llm_invoke')
     def test_end_to_end_workflow(self, mock_llm_invoke, mock_llm_response_license, 
@@ -20,8 +35,17 @@ class TestIntegration:
         with open(test_doc_path, "w") as f:
             f.write(mock_document_content)
         
+        # Parse the mock response
+        if isinstance(mock_llm_response_license, str):
+            mock_data = json.loads(mock_llm_response_license)
+        else:
+            mock_data = mock_llm_response_license
+        
+        # Create a dict that can also have attributes set
+        mock_response = self.AttributeDict(mock_data)
+        
         # Setup the mock LLM
-        mock_llm_invoke.return_value = mock_llm_response_license
+        mock_llm_invoke.return_value = mock_response
         
         # Run the analysis
         result = run_analysis(SoftwareLicenseAgreement, str(test_doc_path))
