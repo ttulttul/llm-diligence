@@ -49,6 +49,17 @@ COMMON_ENTITIES = [
     EntityDefinition("Product", ["product_name", "item_name", "service_name", "product", "service_covered"]),
     EntityDefinition("Contract", ["contract_id", "agreement_id", "document_id"]),
     EntityDefinition("Jurisdiction", ["governing_law", "governing_law_jurisdiction", "jurisdiction"]),
+    # New entities based on model analysis
+    EntityDefinition("Vendor", ["vendor", "supplier", "provider", "service_provider"]),
+    EntityDefinition("Location", ["location", "office_location", "address", "site", "locations"]),
+    EntityDefinition("Department", ["department", "division", "business_unit", "team"]),
+    EntityDefinition("Position", ["position", "job_title", "title", "role"]),
+    EntityDefinition("Document", ["document", "file", "document_id", "file_path"]),
+    EntityDefinition("PaymentTerm", ["payment_term", "payment_terms", "payment_frequency"]),
+    EntityDefinition("Industry", ["industry", "sector", "business_sector", "market_segment"]),
+    EntityDefinition("Currency", ["currency", "currency_code"]),
+    EntityDefinition("BankAccount", ["bank_account", "account_number", "banking_details"]),
+    EntityDefinition("TaxAuthority", ["tax_authority", "tax_jurisdiction", "taxing_entity"]),
 ]
 
 def identify_entity_fields(pydantic_model: Type[BaseModel]) -> Dict[str, List[str]]:
