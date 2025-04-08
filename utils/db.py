@@ -391,7 +391,7 @@ def serialize_for_db(obj):
     else:
         return obj
 
-def get_or_create_entity(session, entity_model, entity_name, extra_fields=None):
+def get_or_create_entity(session, entity_model, entity_name, extra_fields=None, update_existing=True):
     """
     Get an existing entity instance or create a new one.
     
@@ -400,6 +400,7 @@ def get_or_create_entity(session, entity_model, entity_name, extra_fields=None):
         entity_model: The entity model class
         entity_name: The name of the entity
         extra_fields: Optional dict of additional fields to set on newly created entities
+        update_existing: Whether to update existing entities with extra_fields
         
     Returns:
         Entity instance
@@ -415,19 +416,130 @@ def get_or_create_entity(session, entity_model, entity_name, extra_fields=None):
     
     # Query for existing entity
     instance = session.query(entity_model).filter_by(name=entity_name).first()
-    if not instance:
+    
+    if instance:
+        # Update existing entity with any new information if requested
+        if update_existing and extra_fields:
+            updated = False
+            for key, value in extra_fields.items():
+                if value is not None and hasattr(instance, key):
+                    current_value = getattr(instance, key)
+                    # Only update if the field is currently None or empty
+                    if current_value is None or (isinstance(current_value, str) and not current_value.strip()):
+                        setattr(instance, key, value)
+                        updated = True
+            
+            if updated:
+                session.flush()  # Update without committing the transaction
+    else:
         # Create a new entity with the provided name
         fields = {'name': entity_name}
         
         # Add any extra fields provided
         if extra_fields:
-            fields.update(extra_fields)
+            fields.update({k: v for k, v in extra_fields.items() if v is not None})
             
         instance = entity_model(**fields)
         session.add(instance)
         session.flush()  # This will assign an ID without committing the transaction
     
     return instance
+
+def extract_entity_data(pydantic_instance, entity_name, field_name, value):
+    """
+    Extract relevant data for an entity from a pydantic model.
+    
+    Args:
+        pydantic_instance: The pydantic model instance
+        entity_name: The name of the entity (e.g., 'Company', 'Customer')
+        field_name: The name of the field referencing the entity
+        value: The current field value
+        
+    Returns:
+        Dict of extra fields to set on the entity
+    """
+    extra_fields = {}
+    full_model_data = pydantic_instance.model_dump() if hasattr(pydantic_instance, "model_dump") else pydantic_instance.dict()
+    
+    # First extract data from metadata if available
+    if hasattr(pydantic_instance, "metadata") and getattr(pydantic_instance, "metadata", None):
+        metadata = pydantic_instance.metadata
+        if isinstance(metadata, dict):
+            # Common metadata fields for different entity types
+            if entity_name == "Company":
+                extra_fields.update({
+                    "website": metadata.get("company_website") or metadata.get("website"),
+                    "industry": metadata.get("industry") or metadata.get("sector"),
+                    "description": metadata.get("company_description") or metadata.get("description"),
+                })
+            elif entity_name == "Customer":
+                extra_fields.update({
+                    "contact_email": metadata.get("customer_email") or metadata.get("contact_email"),
+                    "contact_phone": metadata.get("customer_phone") or metadata.get("contact_phone"),
+                    "description": metadata.get("customer_description") or metadata.get("description"),
+                })
+            elif entity_name == "Product":
+                extra_fields.update({
+                    "version": metadata.get("product_version") or metadata.get("version"),
+                    "product_type": metadata.get("product_type") or metadata.get("type"),
+                    "description": metadata.get("product_description") or metadata.get("description"),
+                })
+    
+    # Look for entity-specific fields in the model data
+    # Naming patterns commonly used for entity properties
+    if entity_name == "Company":
+        # Look for company-related fields
+        website_keys = [f"{field_name}_website", "company_website", "website", "url"]
+        for key in website_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["website"] = full_model_data[key]
+                break
+                
+        industry_keys = [f"{field_name}_industry", "company_industry", "industry", "sector", "field"]
+        for key in industry_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["industry"] = full_model_data[key]
+                break
+    
+    elif entity_name == "Customer":
+        # Look for customer-related fields
+        email_keys = [f"{field_name}_email", "customer_email", "client_email", "contact_email", "email"]
+        for key in email_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["contact_email"] = full_model_data[key]
+                break
+                
+        phone_keys = [f"{field_name}_phone", "customer_phone", "client_phone", "contact_phone", "phone"]
+        for key in phone_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["contact_phone"] = full_model_data[key]
+                break
+    
+    elif entity_name == "Contract":
+        # Look for contract-related fields
+        date_keys = ["effective_date", "start_date", "execution_date", "agreement_date"]
+        for key in date_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["effective_date"] = full_model_data[key]
+                break
+                
+        exp_date_keys = ["expiration_date", "end_date", "termination_date"]
+        for key in exp_date_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["expiration_date"] = full_model_data[key]
+                break
+                
+        type_keys = ["contract_type", "agreement_type", "document_type"]
+        for key in type_keys:
+            if key in full_model_data and full_model_data[key]:
+                extra_fields["contract_type"] = full_model_data[key]
+                break
+    
+    # Extract description if available
+    if "description" in full_model_data and full_model_data["description"] and "description" not in extra_fields:
+        extra_fields["description"] = full_model_data["description"]
+        
+    return extra_fields
 
 def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, sa_models=None):
     """
@@ -475,24 +587,12 @@ def pydantic_to_sqlalchemy(pydantic_instance, sa_model_class, session: Session, 
                     # Don't try to normalize boolean values or numbers
                     if isinstance(value, (bool, int, float)):
                         break
-                        
-                    # Gather extra fields for the entity based on its type
-                    extra_fields = {}
                     
-                    # For Company entities, we might want to extract additional info
-                    if entity_name == "Company" and hasattr(pydantic_instance, "metadata"):
-                        if getattr(pydantic_instance, "metadata", None) and isinstance(pydantic_instance.metadata, dict):
-                            extra_fields["website"] = pydantic_instance.metadata.get("website")
-                            extra_fields["industry"] = pydantic_instance.metadata.get("industry")
+                    # Extract all relevant entity data
+                    extra_fields = extract_entity_data(pydantic_instance, entity_name, field_name, value)
                     
-                    # For Customer entities, extract contact info if available
-                    if entity_name == "Customer" and hasattr(pydantic_instance, "metadata"):
-                        if getattr(pydantic_instance, "metadata", None) and isinstance(pydantic_instance.metadata, dict):
-                            extra_fields["contact_email"] = pydantic_instance.metadata.get("contact_email")
-                            extra_fields["contact_phone"] = pydantic_instance.metadata.get("contact_phone")
-                    
-                    # Get or create the entity
-                    entity_instance = get_or_create_entity(session, entity_model, value, extra_fields)
+                    # Get or create the entity with the extracted data
+                    entity_instance = get_or_create_entity(session, entity_model, value, extra_fields, update_existing=True)
                     
                     if entity_instance:
                         # Set the foreign key value
@@ -583,11 +683,16 @@ def save_model_to_db(model_instance: BaseModel, sa_models: Dict, session: Sessio
         raise ValueError(f"No SQLAlchemy model found for {model_class_name}")
     
     try:
-        return pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
+        result = pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
+        # Ensure changes are committed
+        session.commit()
+        return result
     except TypeError as e:
         if "not JSON serializable" in str(e):
             # Fallback: Use JSON serialization with custom encoder as a last resort
             model_dict = json.loads(json.dumps(model_instance.model_dump(), cls=DateTimeEncoder))
             model_instance = type(model_instance).model_validate(model_dict)
-            return pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
+            result = pydantic_to_sqlalchemy(model_instance, sa_model_class, session, sa_models)
+            session.commit()
+            return result
         raise
