@@ -18,7 +18,14 @@ class TestAnalyzer:
         def model_dump_json(self, **kwargs):
             """Simulate Pydantic's model_dump_json method."""
             import json
-            return json.dumps(self, **kwargs)
+            from datetime import datetime, date
+            
+            def json_serializer(obj):
+                if isinstance(obj, (datetime, date)):
+                    return obj.isoformat()
+                raise TypeError(f"Type {type(obj)} not serializable")
+                
+            return json.dumps(self, default=json_serializer, **kwargs)
             
         def model_dump(self, **kwargs):
             """Simulate Pydantic's model_dump method."""
@@ -35,6 +42,10 @@ class TestAnalyzer:
         
         # Create a dict that can also have attributes set
         mock_response = self.AttributeDict(mock_data)
+        
+        # Add datetime field to simulate what happens in the real code
+        from datetime import datetime
+        mock_response.analyzed_at = datetime.now()
         
         mock_llm_invoke.return_value = mock_response
         
@@ -63,6 +74,10 @@ class TestAnalyzer:
         
         # Create a dict that can also have attributes set
         mock_response = self.AttributeDict(mock_data)
+        
+        # Add datetime field to simulate what happens in the real code
+        from datetime import datetime
+        mock_response.analyzed_at = datetime.now()
         
         mock_llm_invoke.return_value = mock_response
         

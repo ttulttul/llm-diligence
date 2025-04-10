@@ -129,6 +129,8 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         print(f"\nExtracted {model_class.__name__} Details:")
         print(response.model_dump_json(indent=2))
         
+        # Return the response for testing purposes
+        
         # Save to database if requested
         if db_path:
             try:
@@ -151,6 +153,10 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
             except Exception as e:
                 logger.error(f"Error saving to database: {e}", exc_info=True)
                 print(f"Error saving to database: {e}")
+        
+        # Return the response for testing purposes
+        return response
     except Exception as e:
         logger.error(f"Error during analysis: {e}", exc_info=True)
         print(f"An error occurred during analysis: {e}")
+        return None
