@@ -24,7 +24,8 @@ class TestIntegration:
         def model_dump_json(self, **kwargs):
             """Simulate Pydantic's model_dump_json method."""
             import json
-            return json.dumps(self, **kwargs)
+            from models import ModelEncoder
+            return json.dumps(self, cls=ModelEncoder, **kwargs)
             
         def model_dump(self, **kwargs):
             """Simulate Pydantic's model_dump method."""
@@ -66,7 +67,8 @@ class TestIntegration:
         # Test JSON serialization to file
         output_path = tmp_path / "result.json"
         with open(output_path, "w") as f:
-            json.dump(result.model_dump(), f, cls=MagicMock(side_effect=lambda obj: obj))
+            from models import ModelEncoder
+            json.dump(result.model_dump(), f, cls=ModelEncoder)
             
         # Verify file was created
         assert output_path.exists()
