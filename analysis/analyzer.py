@@ -61,7 +61,6 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbo
                 field_info = model_class.model_fields.get(field_name)
                 if field_info and field_info.description:
                     print(f"   - {field_name}: {field_info.description}")
-        print("-" * 60)
 
 def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software_license.pdf", db_path: Optional[str] = None) -> None:
     """Run the analysis with the selected model."""

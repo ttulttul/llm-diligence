@@ -28,12 +28,17 @@ def main():
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
         parser.add_argument("--json-output", type=str, metavar="DIR",
                            help="Output results as JSON files to specified directory")
-        parser.add_argument("--log-level", type=str, default="INFO", 
+        parser.add_argument("--log-level", type=str, default="WARNING", 
                            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                           help="Set the logging level (default: INFO)")
+                           help="Set the logging level (default: WARNING)")
         parser.add_argument("--log-file", type=str, help="Path to the log file")
+        parser.add_argument("--verbose", action="store_true", help="Be verbose about everything")
         
         args = parser.parse_args()
+
+        # If verbose is configured, override the log level
+        if args.verbose:
+            args.log_level = "INFO"
         
         # Configure logger with command line arguments
         configure_logger(args.log_level, args.log_file)
@@ -47,7 +52,7 @@ def main():
             return 1
             
         if args.list:
-            list_available_models(models_dict)
+            list_available_models(models_dict, verbose=args.verbose)
             return 0
             
         # Handle automatic model selection
