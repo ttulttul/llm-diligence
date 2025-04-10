@@ -74,14 +74,33 @@ Respond with only the exact model name (one of the keys from the available model
         
         chosen_model_name = model_selection.model_name
         
-        # Validate the chosen model exists
-        if chosen_model_name not in available_models:
-            raise ValueError(f"LLM selected invalid model: {chosen_model_name}. Valid options are: {', '.join(available_models.keys())}")
+        # Validate the chosen model exists - try exact match first
+        if chosen_model_name in available_models:
+            model_class = available_models[chosen_model_name]
+        else:
+            # Try case-insensitive match and snake_case conversion
+            chosen_model_key = None
+            for key in available_models.keys():
+                # Check if the key matches the chosen model name (case-insensitive)
+                if key.lower() == chosen_model_name.lower():
+                    chosen_model_key = key
+                    break
+                # Check if the key matches the class name of any model (case-insensitive)
+                model_class_name = available_models[key].__name__.lower()
+                if model_class_name == chosen_model_name.lower():
+                    chosen_model_key = key
+                    break
+            
+            if chosen_model_key is None:
+                raise ValueError(f"LLM selected invalid model: {chosen_model_name}. Valid options are: {', '.join(available_models.keys())}")
+            
+            chosen_model_name = chosen_model_key
+            model_class = available_models[chosen_model_key]
         
         print(f"\nAuto model selection result: '{chosen_model_name}'")
         
         # Now use the selected model to analyze the document
-        model_class = available_models[chosen_model_name]
+        # (model_class is already set in the validation step above)
         
         return cls(
             chosen_model_name=chosen_model_name,
