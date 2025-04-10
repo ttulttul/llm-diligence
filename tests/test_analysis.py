@@ -52,17 +52,17 @@ class TestAnalyzer:
             "start_date": "2023-01-01",
             "end_date": "2025-12-31",
             "auto_renews": "Yes",
-            "license_grant": "Non-exclusive",
-            "license_scope": "Enterprise-wide",
+            "license_grant": "perpetual license",  # Valid enum value
+            "license_scope": "entire enterprise",  # Valid enum value
             "minimum_price": "10000.00",
-            "price_period": "Annual",
-            "warranty_type": "Limited",
-            "liability_limit": "Limited",
+            "price_period": "annually",  # Valid enum value
+            "warranty_type": "limited warranty",  # Valid enum value
+            "liability_limit": "limited to fees paid",  # Valid enum value
             "governing_law_jurisdiction": "California",
-            "dispute_resolution": "Arbitration",
-            "change_of_control": "Requires_Consent",
-            "termination_provisions": "For_Cause",
-            "acceptance_mechanism": "Signature"
+            "dispute_resolution": "arbitration",  # Valid enum value
+            "change_of_control": "customer consent required",  # Valid enum value
+            "termination_provisions": "can terminate for breach after cure period",  # Valid enum value
+            "acceptance_mechanism": "signature required"  # Valid enum value
         }
         
         # Only add fields that don't already exist
@@ -108,7 +108,7 @@ class TestAnalyzer:
         required_fields = {
             "agreement_date": "2023-01-01",
             "effective_start_date": "2023-01-15",
-            "term_type": "Indefinite",
+            "term_type": "indefinite",  # Use lowercase to match enum values
             "governing_law": "California"
         }
         
