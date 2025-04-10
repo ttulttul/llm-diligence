@@ -23,6 +23,8 @@ def main():
         group.add_argument("--auto", action="store_true", help="Automatically select the most appropriate model")
         parser.add_argument("--pdf", type=str, default="software_license.pdf", 
                            help="Path to the PDF file (default: software_license.pdf)")
+        parser.add_argument("--crawl-dir", type=str,
+                           help="Recursively process all PDF files in the specified directory")
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
         parser.add_argument("--json-output", type=str, metavar="DIR",
                            help="Output results as JSON files to specified directory")
