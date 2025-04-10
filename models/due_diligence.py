@@ -85,8 +85,8 @@ class EmployeeCensus(DiligentizerModel):
     total_employees: int = Field(..., description="Total number of employees")
     employees: List[Dict[str, Any]] = Field(..., description="List of employee records")
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "employees": [
                     {
@@ -105,6 +105,7 @@ class EmployeeCensus(DiligentizerModel):
                 ]
             }
         }
+    }
 
 
 class CustomerContract(DiligentizerModel):
@@ -146,8 +147,8 @@ class PricingBook(DiligentizerModel):
     discount_authority_matrix: Dict[str, Any] = Field(..., description="Discount approval levels")
     special_pricing_terms: Optional[List[str]] = Field(None, description="Special pricing programs")
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "products": [
                     {
@@ -167,6 +168,7 @@ class PricingBook(DiligentizerModel):
                 ]
             }
         }
+    }
 
 
 # ------------------------------------------------------------------------------
@@ -198,8 +200,8 @@ class AccountsReceivableAging(DiligentizerModel):
     customer_details: List[Dict[str, Any]] = Field(..., description="Customer-level AR details")
     bad_debt_reserve: float = Field(..., description="Reserve for bad debt")
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "aging_buckets": {
                     "current": 500000,
@@ -210,6 +212,7 @@ class AccountsReceivableAging(DiligentizerModel):
                 }
             }
         }
+    }
 
 
 class DeferredRevenueSchedule(DiligentizerModel):
@@ -341,8 +344,8 @@ class InternalApplicationInventory(DiligentizerModel):
     as_of_date: date = Field(..., description="Inventory date")
     applications: List[Dict[str, Any]] = Field(..., description="List of internal applications")
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "applications": [
                     {
@@ -360,6 +363,7 @@ class InternalApplicationInventory(DiligentizerModel):
                 ]
             }
         }
+    }
 
 
 class HelpdeskMetrics(DiligentizerModel):
@@ -403,8 +407,8 @@ class IntellectualPropertyInventory(DiligentizerModel):
     open_source_usage: Dict[str, Any] = Field(..., description="Open source usage and compliance")
     ip_litigation_history: Optional[List[Dict[str, Any]]] = Field(None, description="IP litigation history")
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "patents": [
                     {
@@ -420,6 +424,7 @@ class IntellectualPropertyInventory(DiligentizerModel):
                 ]
             }
         }
+    }
 
 
 class MaterialContractSummary(DiligentizerModel):
