@@ -2,8 +2,7 @@ import os
 import inspect
 import re
 import sqlalchemy as sa
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship, backref
+from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship, backref
 from typing import Dict, Type, Any, Optional, List, Set, Tuple, Union
 from enum import Enum
 import json
