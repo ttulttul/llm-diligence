@@ -64,11 +64,11 @@ class TestModelClasses:
             minimum_price=10000.00,
             price_period="one-time",
             warranty_type="limited warranty",
-            liability_limit="fixed_amount",
+            liability_limit="fixed monetary amount",
             governing_law_jurisdiction="California",
             dispute_resolution="litigation",
-            change_of_control="no_restrictions",
-            termination_provisions="breach_only",
+            change_of_control="no restrictions",
+            termination_provisions="can only terminate for material breach",
             acceptance_mechanism="signature required",
             analyzed_at=datetime(2023, 1, 1, 12, 0, 0)
         )

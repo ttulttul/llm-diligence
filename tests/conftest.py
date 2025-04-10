@@ -20,15 +20,22 @@ def mock_pdf_path():
 def mock_license_data():
     """Fixture for mock software license data."""
     return {
-        "license_type": "Perpetual",
         "licensor": "TechCorp Inc.",
         "licensee": "Client XYZ",
-        "effective_date": "2023-01-01",
-        "license_fee": 10000.00,
-        "termination_date": "2025-12-31",
-        "governing_law": "California",
-        "limitations_of_liability": True,
-        "warranty_period": 90,
+        "start_date": "2023-01-01",
+        "end_date": "2025-12-31",
+        "auto_renews": False,
+        "license_grant": "perpetual license",
+        "license_scope": "unlimited",
+        "minimum_price": 10000.00,
+        "price_period": "one-time",
+        "warranty_type": "limited warranty",
+        "liability_limit": "fixed monetary amount",
+        "governing_law_jurisdiction": "California",
+        "dispute_resolution": "litigation",
+        "change_of_control": "no restrictions",
+        "termination_provisions": "can only terminate for material breach",
+        "acceptance_mechanism": "signature required",
         "maintenance_included": True
     }
 
@@ -38,34 +45,62 @@ def mock_employment_data():
     return {
         "employer": "ABC Corporation",
         "employee": "Jane Doe",
-        "position": "Senior Software Engineer",
+        "job_title": "Senior Software Engineer",
         "agreement_date": "2023-02-15",
         "effective_start_date": "2023-03-01",
         "salary": {
-            "base_amount": 120000.00,
+            "annual_amount": 120000.00,
             "currency": "USD",
-            "payment_frequency": "Bi-weekly"
+            "payment_frequency": "bi-weekly"
         },
-        "term_length": 12,
-        "at_will": True,
-        "non_compete_months": 6
+        "bonuses": [
+            {
+                "description": "Performance bonus",
+                "max_amount": 20000.00,
+                "currency": "USD",
+                "timing": "annually",
+                "conditions": "Based on company and individual performance"
+            }
+        ],
+        "benefits_description": "Standard company benefits package",
+        "vacation_policy_description": "15 days paid vacation annually",
+        "termination_clauses": {
+            "for_cause": "Immediate termination for misconduct",
+            "without_cause_employer": "30 days notice required",
+            "resignation_employee": "30 days notice required"
+        },
+        "restrictive_covenants": {
+            "non_competition_duration_months": 6,
+            "non_competition_scope": "Software industry within 50 miles",
+            "non_solicitation_duration_months": 12,
+            "non_solicitation_scope": "Company clients and employees",
+            "confidentiality_clause_present": True,
+            "intellectual_property_assignment": True
+        },
+        "governing_law": "California"
     }
 
 @pytest.fixture
 def mock_llm_response_license():
     """Fixture that mocks a license agreement analysis response from LLM."""
     return json.dumps({
-        "license_type": "Perpetual",
         "licensor": "TechCorp Inc.",
         "licensee": "Client XYZ",
-        "effective_date": "2023-01-01",
-        "license_fee": 10000.00,
-        "termination_date": "2025-12-31",
-        "governing_law": "California",
-        "limitations_of_liability": True,
-        "warranty_period": 90,
+        "start_date": "2023-01-01",
+        "end_date": "2025-12-31",
+        "auto_renews": False,
+        "license_grant": "perpetual license",
+        "license_scope": "unlimited",
+        "minimum_price": 10000.00,
+        "price_period": "one-time",
+        "warranty_type": "limited warranty",
+        "liability_limit": "fixed monetary amount",
+        "governing_law_jurisdiction": "California",
+        "dispute_resolution": "litigation",
+        "change_of_control": "no restrictions",
+        "termination_provisions": "can only terminate for material breach",
+        "acceptance_mechanism": "signature required",
         "maintenance_included": True,
-        # Adding fields that appear to be expected by run_analysis
         "source_filename": None,
         "analyzed_at": "2023-01-01T12:00:00"
     })
@@ -76,18 +111,39 @@ def mock_llm_response_employment():
     return json.dumps({
         "employer": "ABC Corporation",
         "employee": "Jane Doe",
-        "position": "Senior Software Engineer",
+        "job_title": "Senior Software Engineer",
         "agreement_date": "2023-02-15",
         "effective_start_date": "2023-03-01",
         "salary": {
-            "base_amount": 120000.00,
+            "annual_amount": 120000.00,
             "currency": "USD",
-            "payment_frequency": "Bi-weekly"
+            "payment_frequency": "bi-weekly"
         },
-        "term_length": 12,
-        "at_will": True,
-        "non_compete_months": 6,
-        # Adding fields that appear to be expected by run_analysis
+        "bonuses": [
+            {
+                "description": "Performance bonus",
+                "max_amount": 20000.00,
+                "currency": "USD",
+                "timing": "annually",
+                "conditions": "Based on company and individual performance"
+            }
+        ],
+        "benefits_description": "Standard company benefits package",
+        "vacation_policy_description": "15 days paid vacation annually",
+        "termination_clauses": {
+            "for_cause": "Immediate termination for misconduct",
+            "without_cause_employer": "30 days notice required",
+            "resignation_employee": "30 days notice required"
+        },
+        "restrictive_covenants": {
+            "non_competition_duration_months": 6,
+            "non_competition_scope": "Software industry within 50 miles",
+            "non_solicitation_duration_months": 12,
+            "non_solicitation_scope": "Company clients and employees",
+            "confidentiality_clause_present": True,
+            "intellectual_property_assignment": True
+        },
+        "governing_law": "California",
         "source_filename": None,
         "analyzed_at": "2023-02-15T10:00:00"
     })
@@ -96,11 +152,7 @@ def mock_llm_response_employment():
 def mock_auto_model_response():
     """Fixture that mocks an auto model classification response."""
     return json.dumps({
-        "model_type": "SoftwareLicenseAgreement",
-        "confidence_score": 0.92,
-        "alternate_models": [
-            {"model_type": "ServiceLevelAgreement", "confidence_score": 0.45}
-        ]
+        "model_name": "SoftwareLicenseAgreement"
     })
 
 @pytest.fixture
