@@ -158,11 +158,15 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         # Ensure we're returning a proper model instance, not just a dict-like object
         if not isinstance(response, model_class):
             try:
-                # If it's not already the right type, convert it to the proper model class
-                return model_class.model_validate(response.model_dump())
+                # Convert the response to a dictionary
+                response_dict = response.model_dump() if hasattr(response, 'model_dump') else dict(response)
+                
+                # Create a new instance of the model class with the dictionary data
+                model_instance = model_class(**response_dict)
+                return model_instance
             except Exception as e:
-                logger.error(f"Error during model validation: {e}", exc_info=True)
-                # For testing purposes, return the original response if validation fails
+                logger.error(f"Error during model instantiation: {e}", exc_info=True)
+                # For testing purposes, return the original response if instantiation fails
                 return response
         return response
     except Exception as e:

@@ -70,6 +70,7 @@ class TestAnalyzer:
             if field not in mock_response:
                 mock_response[field] = value
         
+        # Make sure the mock response has all required fields
         mock_llm_invoke.return_value = mock_response
         
         # Run the analysis
