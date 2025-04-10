@@ -109,6 +109,7 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
         ]
         
         logger.debug("Sending document to LLM for analysis")
+        logger.info(f"Prompt: {prompt}")
         
         # Use cached LLM invoke instead of direct API call
         response = cached_llm_invoke(
