@@ -57,7 +57,7 @@ class TestIntegration:
         
         # Check the result
         assert isinstance(result, SoftwareLicenseAgreement)
-        assert result.license_type == "Perpetual"
+        assert result.license_grant == "perpetual license"
         assert result.licensor == "TechCorp Inc."
         assert result.licensee == "Client XYZ"
         
@@ -77,5 +77,5 @@ class TestIntegration:
         with open(output_path, "r") as f:
             loaded_data = json.load(f)
         
-        assert loaded_data["license_type"] == "Perpetual"
+        assert loaded_data["license_grant"] == "perpetual license"
         assert loaded_data["licensor"] == "TechCorp Inc."
