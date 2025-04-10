@@ -39,18 +39,28 @@ def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
                 
     return models_dict
 
-def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]]) -> None:
-    """Print a formatted list of all available models."""
+def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbose: bool = False) -> None:
+    """Print a formatted list of all available models.
+    
+    Args:
+        models_dict: Dictionary of available models
+        verbose: If True, show detailed field information for each model
+    """
     logger.info("Listing available models")
     print("\nAvailable Models:")
     print("=" * 60)
     for i, (name, model_class) in enumerate(models_dict.items(), 1):
-        print(f"{i}. {name}")
-        # Get model fields with descriptions
-        for field_name, field in model_class.__annotations__.items():
-            field_info = model_class.model_fields.get(field_name)
-            if field_info and field_info.description:
-                print(f"   - {field_name}: {field_info.description}")
+        # Get the model's docstring as a description
+        description = model_class.__doc__.strip() if model_class.__doc__ else "No description available"
+        print(f"{i}. {name} - {description}")
+        
+        # Only show field details if verbose is True
+        if verbose:
+            # Get model fields with descriptions
+            for field_name, field in model_class.__annotations__.items():
+                field_info = model_class.model_fields.get(field_name)
+                if field_info and field_info.description:
+                    print(f"   - {field_name}: {field_info.description}")
         print("-" * 60)
 
 def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software_license.pdf", db_path: Optional[str] = None) -> None:
