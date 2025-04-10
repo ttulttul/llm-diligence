@@ -42,6 +42,10 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
 def format_content_for_anthropic(content):
     """Format content properly for the Anthropic API."""
     if isinstance(content, list):
+        # For test compatibility, if it's a list of strings, join them with newlines
+        if all(isinstance(item, str) for item in content):
+            return [{"type": "text", "text": "\n".join(content)}]
+        
         formatted_content = []
         for item in content:
             if isinstance(item, str):
@@ -55,7 +59,7 @@ def format_content_for_anthropic(content):
         return [{"type": "text", "text": content}]
 
 def cached_llm_invoke(model_name: str=None, system_message: str="", user_content: list=[], max_tokens: int=100, 
-                     response_model=None):
+                     temperature: float=0, response_model=None):
     """Function to invoke the LLM with caching support for Pydantic models."""
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -70,7 +74,10 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
     # Check if the result is already cached
     cached_result = cache.get(cache_key)
     if cached_result is not None:
-        # Deserialize the cached result
+        # If no response_model is provided, just return the cached string
+        if response_model is None:
+            return cached_result
+        # Otherwise deserialize the cached result
         return response_model.model_validate_json(cached_result)
     
     # Initialize Anthropic client
@@ -93,11 +100,17 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
             {"role": "user", "content": formatted_content}
         ],
         max_tokens=max_tokens,
+        temperature=temperature,
         response_model=response_model
     )
 
     # Cache the result
-    serialized_result = result.model_dump_json()
-    cache.set(cache_key, serialized_result)
-    
-    return result
+    if response_model is not None:
+        serialized_result = result.model_dump_json()
+        cache.set(cache_key, serialized_result)
+        return result
+    else:
+        # For simple text responses
+        text_result = result
+        cache.set(cache_key, text_result)
+        return text_result
