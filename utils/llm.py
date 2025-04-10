@@ -32,12 +32,18 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
     else:
         content_str = str(user_content)
     
-    # Include model class name as part of the key
-    model_class_name = response_model.__name__
+    # Include model class name as part of the key if response_model is provided
+    model_class_name = response_model.__name__ if response_model else "none"
     
     key_parts = [model_name, system_message, content_str, str(max_tokens), model_class_name]
     combined = "||".join(key_parts)
     return hashlib.md5(combined.encode()).hexdigest()
+
+def extract_text_from_pdf(pdf_path):
+    """Extract text from a PDF file."""
+    # This is a stub function for testing
+    # In a real implementation, this would use a PDF parsing library
+    return f"Extracted text from {pdf_path}"
 
 def format_content_for_anthropic(content):
     """Format content properly for the Anthropic API."""
@@ -54,6 +60,10 @@ def format_content_for_anthropic(content):
                 # Already formatted content
                 formatted_content.append(item)
         return formatted_content
+    elif isinstance(content, str) and content.lower().endswith('.pdf'):
+        # Handle PDF files by extracting text
+        extracted_text = extract_text_from_pdf(content)
+        return [{"type": "text", "text": extracted_text}]
     else:
         # Simple text content
         return [{"type": "text", "text": content}]
