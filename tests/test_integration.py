@@ -3,6 +3,10 @@ from unittest.mock import patch, MagicMock
 import json
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from analysis.analyzer import run_analysis
 from models import SoftwareLicenseAgreement, EmploymentContract
