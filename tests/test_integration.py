@@ -31,17 +31,18 @@ class TestIntegration:
             return dict(self)
     
     @patch('utils.llm.cached_llm_invoke')
-    @patch('analysis.analyzer.extract_text_from_pdf')
-    def test_end_to_end_workflow(self, mock_extract_text, mock_llm_invoke, 
+    @patch('builtins.open', new_callable=MagicMock)
+    def test_end_to_end_workflow(self, mock_open, mock_llm_invoke, 
                                  mock_llm_response_license, mock_document_content, tmp_path):
         """Test an end-to-end document analysis workflow with mocked LLM."""
         # Create a test document in the temp directory
         test_doc_path = tmp_path / "test_doc.pdf"
-        with open(test_doc_path, "w") as f:
-            f.write(mock_document_content)
         
-        # Mock the PDF text extraction
-        mock_extract_text.return_value = mock_document_content
+        # Set up the mock for file reading
+        mock_file = MagicMock()
+        mock_file.__enter__.return_value = mock_file
+        mock_file.read.return_value = mock_document_content
+        mock_open.return_value = mock_file
         
         # Parse the mock response
         if isinstance(mock_llm_response_license, str):
