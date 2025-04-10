@@ -35,6 +35,9 @@ class TestAutoModel:
         # Create a dict that can also have attributes set
         mock_response = self.AttributeDict(mock_data)
         
+        # Add model_name attribute to match what AutoModel expects
+        mock_response.model_name = "SoftwareLicenseAgreement"
+        
         # Setup mock
         mock_llm_invoke.return_value = mock_response
         
@@ -61,15 +64,19 @@ class TestAutoModel:
         """Test AutoModel behavior when confidence is below threshold."""
         # Create mock data with low confidence
         mock_data = {
-            "model_type": "SoftwareLicenseAgreement",
+            "selected_model_type": "SoftwareLicenseAgreement",
             "confidence_score": 0.32,  # Below default threshold
             "alternate_models": [
                 {"model_type": "ServiceLevelAgreement", "confidence_score": 0.30}
-            ]
+            ],
+            "below_confidence_threshold": True
         }
         
         # Create a dict that can also have attributes set
         mock_response = self.AttributeDict(mock_data)
+        
+        # Add model_name attribute to match what AutoModel expects
+        mock_response.model_name = "SoftwareLicenseAgreement"
         
         # Setup mock to return low confidence
         mock_llm_invoke.return_value = mock_response
