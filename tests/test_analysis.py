@@ -40,39 +40,36 @@ class TestAnalyzer:
         else:
             mock_data = mock_llm_response_license
         
-        # Create a dict that can also have attributes set
+        # Create a proper model-like response
+        from datetime import datetime, date
+        
+        # Ensure all required fields are present with proper types
+        mock_data.update({
+            "source_filename": mock_pdf_path,
+            "analyzed_at": datetime.now(),
+            "llm_model": "claude-3-opus-20240229",
+            "licensor": "TechCorp Inc.",
+            "licensee": "Client XYZ",
+            "effective_date": date(2023, 1, 1),
+            "expiration_date": date(2025, 12, 31),
+            "license_type": "Perpetual",
+            "license_fee": 10000.00,
+            "license_grant": "PERPETUAL",  # Enum value
+            "license_scope": "ENTERPRISE",  # Enum value
+            "warranty_type": "LIMITED",  # Enum value
+            "liability_limit": "FEES_PAID",  # Enum value
+            "governing_law_jurisdiction": "California",
+            "dispute_resolution": "ARBITRATION",  # Enum value
+            "change_of_control": "CONSENT_REQUIRED",  # Enum value
+            "termination_provisions": "BREACH_WITH_CURE",  # Enum value
+            "acceptance_mechanism": "SIGNATURE",  # Enum value
+            "price_period": "ANNUAL"  # Enum value
+        })
+        
+        # Create a model-like object that will be returned by the mock
         mock_response = self.AttributeDict(mock_data)
         
-        # Add datetime field to simulate what happens in the real code
-        from datetime import datetime
-        mock_response.analyzed_at = datetime.now()
-        
-        # Add required fields that might be missing in the mock response
-        required_fields = {
-            "start_date": "2023-01-01",
-            "end_date": "2025-12-31",
-            "auto_renews": "Yes",
-            "license_grant": "perpetual license",  # Valid enum value
-            "license_scope": "entire enterprise",  # Valid enum value
-            "minimum_price": "10000.00",
-            "price_period": "annually",  # Valid enum value
-            "warranty_type": "limited warranty",  # Valid enum value
-            "liability_limit": "limited to fees paid",  # Valid enum value
-            "governing_law_jurisdiction": "California",
-            "dispute_resolution": "arbitration",  # Valid enum value
-            "change_of_control": "customer consent required",  # Valid enum value
-            "termination_provisions": "can terminate for breach after cure period",  # Valid enum value
-            "acceptance_mechanism": "signature required",  # Valid enum value
-            "licensor": "TechCorp Inc.",
-            "licensee": "Client XYZ"
-        }
-        
-        # Only add fields that don't already exist
-        for field, value in required_fields.items():
-            if field not in mock_response:
-                mock_response[field] = value
-        
-        # Make sure the mock response has all required fields
+        # Set up the mock to return our properly formatted response
         mock_llm_invoke.return_value = mock_response
         
         # Run the analysis
@@ -99,32 +96,56 @@ class TestAnalyzer:
         else:
             mock_data = mock_llm_response_employment
         
-        # Create a dict that can also have attributes set
-        mock_response = self.AttributeDict(mock_data)
+        # Create a proper model-like response with all required fields
+        from datetime import datetime, date
         
-        # Add datetime field to simulate what happens in the real code
-        from datetime import datetime
-        mock_response.analyzed_at = datetime.now()
+        # Create the nested objects with proper structure
+        salary_data = {
+            "annual_amount": 120000.00,
+            "currency": "USD",
+            "payment_frequency": "Bi-weekly"
+        }
         
-        # Add any required fields that might be missing in the mock response
-        # This ensures the model validation will succeed
-        required_fields = {
-            "agreement_date": "2023-01-01",
-            "effective_start_date": "2023-01-15",
-            "term_type": "indefinite",  # Use lowercase to match enum values
-            "governing_law": "California",
+        termination_clauses = {
+            "for_cause": "Immediate termination for gross misconduct",
+            "without_cause_employer": "Two weeks notice required",
+            "resignation_employee": "Two weeks notice required"
+        }
+        
+        restrictive_covenants = {
+            "non_solicitation_duration_months": 12,
+            "non_solicitation_scope": "Employees and clients",
+            "non_competition_duration_months": 6,
+            "non_competition_scope": "Software industry within 50 miles",
+            "confidentiality_clause_present": True,
+            "intellectual_property_assignment": True
+        }
+        
+        # Update the mock data with properly structured fields
+        mock_data.update({
+            "source_filename": mock_pdf_path,
+            "analyzed_at": datetime.now(),
+            "llm_model": "claude-3-opus-20240229",
             "employer": "ABC Corporation",
             "employee": "Jane Doe",
             "job_title": "Senior Software Engineer",
-            "at_will": True,
-            "salary": {"annual_amount": 120000.00, "currency": "USD", "payment_frequency": "Bi-weekly"}
-        }
+            "agreement_date": date(2023, 1, 1),
+            "effective_start_date": date(2023, 1, 15),
+            "salary": salary_data,
+            "bonuses": [],
+            "benefits_description": "Standard company benefits package",
+            "vacation_policy_description": "15 days paid vacation annually",
+            "termination_clauses": termination_clauses,
+            "restrictive_covenants": restrictive_covenants,
+            "governing_law": "California",
+            "on_call_requirements": None,
+            "appendices_referenced": ["Employee Handbook", "Confidentiality Agreement"]
+        })
         
-        # Only add fields that don't already exist
-        for field, value in required_fields.items():
-            if field not in mock_response:
-                mock_response[field] = value
+        # Create a model-like object that will be returned by the mock
+        mock_response = self.AttributeDict(mock_data)
         
+        # Set up the mock to return our properly formatted response
         mock_llm_invoke.return_value = mock_response
         
         # Run the analysis
@@ -132,12 +153,16 @@ class TestAnalyzer:
         
         # Assertions
         assert isinstance(result, EmploymentContract)
-        assert result.employer == "ABC Corporation"  # Use the actual field name in the model
-        assert result.employee == "Jane Doe"  # Use the actual field name in the model
-        assert result.job_title == "Senior Software Engineer"  # Changed from position to job_title
-        assert result.at_will is True
+        assert result.employer == "ABC Corporation"
+        assert result.employee == "Jane Doe"
+        assert result.job_title == "Senior Software Engineer"
         assert result.salary.annual_amount == 120000.00
         assert result.salary.currency == "USD"
+        assert result.salary.payment_frequency == "Bi-weekly"
+        assert result.governing_law == "California"
+        assert result.termination_clauses.for_cause == "Immediate termination for gross misconduct"
+        assert result.restrictive_covenants.confidentiality_clause_present is True
+        assert len(result.appendices_referenced) == 2
         
     @patch('analysis.analyzer.get_available_models')
     def test_get_available_models(self, mock_get_models):
