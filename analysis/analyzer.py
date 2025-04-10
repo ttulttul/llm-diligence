@@ -155,6 +155,10 @@ def run_analysis(model_class: Type[DiligentizerModel], pdf_path: str = "software
                 print(f"Error saving to database: {e}")
         
         # Return the response for testing purposes
+        # Ensure we're returning a proper model instance, not just a dict-like object
+        if not isinstance(response, model_class):
+            # If it's not already the right type, convert it to the proper model class
+            return model_class.model_validate(response.model_dump())
         return response
     except Exception as e:
         logger.error(f"Error during analysis: {e}", exc_info=True)
