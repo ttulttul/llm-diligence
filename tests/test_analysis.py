@@ -54,16 +54,22 @@ class TestAnalyzer:
             "expiration_date": date(2025, 12, 31),
             "license_type": "Perpetual",
             "license_fee": 10000.00,
-            "license_grant": "PERPETUAL",  # Enum value
-            "license_scope": "ENTERPRISE",  # Enum value
-            "warranty_type": "LIMITED",  # Enum value
-            "liability_limit": "FEES_PAID",  # Enum value
+            # Required fields that were missing
+            "start_date": date(2023, 1, 1),
+            "end_date": date(2025, 12, 31),
+            "auto_renews": "Yes",
+            "minimum_price": "10000.00",
+            # Enum values with correct string values
+            "license_grant": "perpetual license",
+            "license_scope": "entire enterprise",
+            "warranty_type": "limited warranty",
+            "liability_limit": "limited to fees paid",
             "governing_law_jurisdiction": "California",
-            "dispute_resolution": "ARBITRATION",  # Enum value
-            "change_of_control": "CONSENT_REQUIRED",  # Enum value
-            "termination_provisions": "BREACH_WITH_CURE",  # Enum value
-            "acceptance_mechanism": "SIGNATURE",  # Enum value
-            "price_period": "ANNUAL"  # Enum value
+            "dispute_resolution": "arbitration",
+            "change_of_control": "customer consent required",
+            "termination_provisions": "can terminate for breach after cure period",
+            "acceptance_mechanism": "signature required",
+            "price_period": "annually"
         })
         
         # Create a model-like object that will be returned by the mock
@@ -78,10 +84,17 @@ class TestAnalyzer:
         # Assertions
         assert isinstance(result, SoftwareLicenseAgreement)
         assert result.license_grant == "perpetual license"
+        assert result.license_scope == "entire enterprise"
         assert result.licensor == "TechCorp Inc."
         assert result.licensee == "Client XYZ"
         assert result.governing_law_jurisdiction == "California"
-        # Check other fields that exist in the model
+        assert result.warranty_type == "limited warranty"
+        assert result.liability_limit == "limited to fees paid"
+        assert result.dispute_resolution == "arbitration"
+        assert result.change_of_control == "customer consent required"
+        assert result.termination_provisions == "can terminate for breach after cure period"
+        assert result.acceptance_mechanism == "signature required"
+        assert result.price_period == "annually"
         assert result.source_filename == mock_pdf_path
         
         # Verify LLM was called with correct parameters
