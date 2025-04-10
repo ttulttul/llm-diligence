@@ -30,19 +30,14 @@ class TestIntegration:
             """Simulate Pydantic's model_dump method."""
             return dict(self)
     
-    @patch('utils.llm.cached_llm_invoke')
-    @patch('instructor.multimodal.PDF.from_path')
-    def test_end_to_end_workflow(self, mock_pdf_from_path, mock_llm_invoke, 
+    @patch('analysis.analyzer.cached_llm_invoke')
+    def test_end_to_end_workflow(self, mock_llm_invoke, 
                                  mock_llm_response_license, mock_document_content, tmp_path):
         """Test an end-to-end document analysis workflow with mocked LLM."""
         # Create a test document in the temp directory
         test_doc_path = tmp_path / "test_doc.pdf"
         with open(test_doc_path, "w") as f:
             f.write(mock_document_content)
-        
-        # Create a mock PDF object
-        mock_pdf = MagicMock()
-        mock_pdf_from_path.return_value = mock_pdf
         
         # Parse the mock response
         if isinstance(mock_llm_response_license, str):
