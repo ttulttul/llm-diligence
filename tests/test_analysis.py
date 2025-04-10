@@ -47,6 +47,29 @@ class TestAnalyzer:
         from datetime import datetime
         mock_response.analyzed_at = datetime.now()
         
+        # Add required fields that might be missing in the mock response
+        required_fields = {
+            "start_date": "2023-01-01",
+            "end_date": "2025-12-31",
+            "auto_renews": "Yes",
+            "license_grant": "Non-exclusive",
+            "license_scope": "Enterprise-wide",
+            "minimum_price": "10000.00",
+            "price_period": "Annual",
+            "warranty_type": "Limited",
+            "liability_limit": "Limited",
+            "governing_law_jurisdiction": "California",
+            "dispute_resolution": "Arbitration",
+            "change_of_control": "Requires_Consent",
+            "termination_provisions": "For_Cause",
+            "acceptance_mechanism": "Signature"
+        }
+        
+        # Only add fields that don't already exist
+        for field, value in required_fields.items():
+            if field not in mock_response:
+                mock_response[field] = value
+        
         mock_llm_invoke.return_value = mock_response
         
         # Run the analysis
@@ -78,6 +101,20 @@ class TestAnalyzer:
         # Add datetime field to simulate what happens in the real code
         from datetime import datetime
         mock_response.analyzed_at = datetime.now()
+        
+        # Add any required fields that might be missing in the mock response
+        # This ensures the model validation will succeed
+        required_fields = {
+            "agreement_date": "2023-01-01",
+            "effective_start_date": "2023-01-15",
+            "term_type": "Indefinite",
+            "governing_law": "California"
+        }
+        
+        # Only add fields that don't already exist
+        for field, value in required_fields.items():
+            if field not in mock_response:
+                mock_response[field] = value
         
         mock_llm_invoke.return_value = mock_response
         
