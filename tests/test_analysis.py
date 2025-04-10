@@ -117,7 +117,7 @@ class TestAnalyzer:
             "employee": "Jane Doe",
             "job_title": "Senior Software Engineer",
             "at_will": True,
-            "salary": {"base_amount": 120000.00, "currency": "USD"}
+            "salary": {"annual_amount": 120000.00, "currency": "USD", "payment_frequency": "Bi-weekly"}
         }
         
         # Only add fields that don't already exist
@@ -136,7 +136,7 @@ class TestAnalyzer:
         assert result.employee == "Jane Doe"  # Use the actual field name in the model
         assert result.job_title == "Senior Software Engineer"  # Changed from position to job_title
         assert result.at_will is True
-        assert result.salary.base_amount == 120000.00
+        assert result.salary.annual_amount == 120000.00
         assert result.salary.currency == "USD"
         
     @patch('analysis.analyzer.get_available_models')
