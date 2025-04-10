@@ -180,11 +180,11 @@ class TestAnalyzer:
     @patch('analysis.analyzer.get_available_models')
     def test_get_available_models(self, mock_get_models):
         """Test that available models are retrieved correctly."""
-        # Setup mock return value
+        # Setup mock return value with the actual naming convention used in the system
         mock_models = {
-            "software_license_agreement": SoftwareLicenseAgreement,
-            "employment_contract": EmploymentContract,
-            "auto": AutoModel
+            "legal_SoftwareLicenseAgreement": SoftwareLicenseAgreement,
+            "contracts_EmploymentContract": EmploymentContract,
+            "auto_AutoModel": AutoModel
         }
         mock_get_models.return_value = mock_models
         
@@ -192,7 +192,7 @@ class TestAnalyzer:
         models = get_available_models()
         
         # Assertions
-        assert "software_license_agreement" in models
-        assert "employment_contract" in models
-        assert "auto" in models
-        assert models["software_license_agreement"] == SoftwareLicenseAgreement
+        assert "legal_SoftwareLicenseAgreement" in models
+        assert "contracts_EmploymentContract" in models
+        assert "auto_AutoModel" in models
+        assert models["legal_SoftwareLicenseAgreement"] == SoftwareLicenseAgreement
