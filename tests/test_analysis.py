@@ -112,7 +112,12 @@ class TestAnalyzer:
             "agreement_date": "2023-01-01",
             "effective_start_date": "2023-01-15",
             "term_type": "indefinite",  # Use lowercase to match enum values
-            "governing_law": "California"
+            "governing_law": "California",
+            "employer_name": "ABC Corporation",
+            "employee_name": "Jane Doe",
+            "job_title": "Senior Software Engineer",
+            "at_will": True,
+            "salary": {"base_amount": 120000.00, "currency": "USD"}
         }
         
         # Only add fields that don't already exist
@@ -127,9 +132,9 @@ class TestAnalyzer:
         
         # Assertions
         assert isinstance(result, EmploymentContract)
-        assert result.employer == "ABC Corporation"
-        assert result.employee == "Jane Doe"
-        assert result.position == "Senior Software Engineer"
+        assert result.employer_name == "ABC Corporation"  # Changed from employer to employer_name
+        assert result.employee_name == "Jane Doe"  # Changed from employee to employee_name
+        assert result.job_title == "Senior Software Engineer"  # Changed from position to job_title
         assert result.at_will is True
         assert result.salary.base_amount == 120000.00
         assert result.salary.currency == "USD"
