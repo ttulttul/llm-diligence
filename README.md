@@ -153,6 +153,13 @@ Future development will focus on:
 
 Contributions are welcome! Feel free to submit pull requests or open issues for new features or bug fixes.
 
+## Updates
+
+### April 10th, 2025 - Fixed up the test suite
+
+The test suite was severely lacking. With much help from `aider.chat`, we now have a solid set
+of unit tests and an integration test that pass with no warnings.
+
 ## License
 
 MIT License
