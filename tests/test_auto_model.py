@@ -2,41 +2,16 @@ import pytest
 from unittest.mock import patch, MagicMock
 import json
 
-from models.auto import AutoModel
+from models.auto import AutoModel, ModelSelection
 from models import SoftwareLicenseAgreement, EmploymentContract
 
 
 class TestAutoModel:
-    # Helper class for tests
-    class AttributeDict(dict):
-        """A dictionary that allows attribute access to its keys and simulates Pydantic model methods."""
-        def __init__(self, *args, **kwargs):
-            super(TestAutoModel.AttributeDict, self).__init__(*args, **kwargs)
-            self.__dict__ = self
-            
-        def model_dump_json(self, **kwargs):
-            """Simulate Pydantic's model_dump_json method."""
-            import json
-            return json.dumps(self, **kwargs)
-            
-        def model_dump(self, **kwargs):
-            """Simulate Pydantic's model_dump method."""
-            return dict(self)
-    
     @patch('models.auto.cached_llm_invoke')
-    def test_auto_model_selection(self, mock_llm_invoke, mock_auto_model_response, mock_pdf_path):
+    def test_auto_model_selection(self, mock_llm_invoke, mock_pdf_path):
         """Test that AutoModel correctly selects the appropriate model."""
-        # Parse the mock response
-        if isinstance(mock_auto_model_response, str):
-            mock_data = json.loads(mock_auto_model_response)
-        else:
-            mock_data = mock_auto_model_response
-        
-        # Create a dict that can also have attributes set
-        mock_response = self.AttributeDict(mock_data)
-        
-        # Add model_name attribute to match what AutoModel expects
-        mock_response.model_name = "SoftwareLicenseAgreement"
+        # Create a ModelSelection instance for the mock response
+        mock_response = ModelSelection(model_name="SoftwareLicenseAgreement")
         
         # Setup mock
         mock_llm_invoke.return_value = mock_response
@@ -51,35 +26,19 @@ class TestAutoModel:
         auto_model = AutoModel.from_pdf(mock_pdf_path, available_models)
         
         # Assertions
-        assert auto_model.chosen_model_name == "SoftwareLicenseAgreement"
-        # The following assertions are commented out because they refer to fields not in the AutoModel class
-        # assert auto_model.confidence_score == 0.92
-        # assert len(auto_model.alternate_models) == 1
-        # assert auto_model.alternate_models[0]["model_type"] == "ServiceLevelAgreement"
+        assert auto_model.chosen_model_name == "software_license_agreement"
+        assert auto_model.chosen_model_result is None
         
         # Make sure the LLM was called correctly
         mock_llm_invoke.assert_called_once()
     
     @patch('models.auto.cached_llm_invoke')
-    def test_auto_model_with_low_confidence(self, mock_llm_invoke, mock_pdf_path):
-        """Test AutoModel behavior when confidence is below threshold."""
-        # Create mock data with low confidence
-        mock_data = {
-            "selected_model_type": "SoftwareLicenseAgreement",
-            "confidence_score": 0.32,  # Below default threshold
-            "alternate_models": [
-                {"model_type": "ServiceLevelAgreement", "confidence_score": 0.30}
-            ],
-            "below_confidence_threshold": True
-        }
+    def test_auto_model_with_class_name(self, mock_llm_invoke, mock_pdf_path):
+        """Test that AutoModel correctly handles class name instead of dict key."""
+        # Create a ModelSelection instance with the class name instead of the dict key
+        mock_response = ModelSelection(model_name="EmploymentContract")
         
-        # Create a dict that can also have attributes set
-        mock_response = self.AttributeDict(mock_data)
-        
-        # Add model_name attribute to match what AutoModel expects
-        mock_response.model_name = "SoftwareLicenseAgreement"
-        
-        # Setup mock to return low confidence
+        # Setup mock
         mock_llm_invoke.return_value = mock_response
         
         # Define available models
@@ -88,12 +47,35 @@ class TestAutoModel:
             "employment_contract": EmploymentContract
         }
         
-        # Test with default threshold
+        # Test the from_pdf method
         auto_model = AutoModel.from_pdf(mock_pdf_path, available_models)
         
-        # Assertions - should still select even with low confidence
-        assert auto_model.chosen_model_name == "SoftwareLicenseAgreement"
-        # The following assertions are commented out because they refer to fields not in the AutoModel class
-        # assert auto_model.confidence_score == 0.32
-        # # Flag should indicate low confidence
-        # assert auto_model.below_confidence_threshold is True
+        # Assertions - should match the dict key, not the class name
+        assert auto_model.chosen_model_name == "employment_contract"
+        assert auto_model.chosen_model_result is None
+        
+        # Make sure the LLM was called correctly
+        mock_llm_invoke.assert_called_once()
+    
+    @patch('models.auto.cached_llm_invoke')
+    def test_auto_model_with_invalid_model(self, mock_llm_invoke, mock_pdf_path):
+        """Test AutoModel behavior when an invalid model is selected."""
+        # Create a ModelSelection instance with an invalid model name
+        mock_response = ModelSelection(model_name="InvalidModel")
+        
+        # Setup mock
+        mock_llm_invoke.return_value = mock_response
+        
+        # Define available models
+        available_models = {
+            "software_license_agreement": SoftwareLicenseAgreement,
+            "employment_contract": EmploymentContract
+        }
+        
+        # Test with invalid model name - should raise ValueError
+        with pytest.raises(ValueError) as excinfo:
+            auto_model = AutoModel.from_pdf(mock_pdf_path, available_models)
+        
+        # Check error message
+        assert "LLM selected invalid model: InvalidModel" in str(excinfo.value)
+        assert "Valid options are: software_license_agreement, employment_contract" in str(excinfo.value)
