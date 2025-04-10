@@ -75,6 +75,11 @@ Analyze a document with a specific model:
 python diligentizer.py --model legal_SoftwareLicenseAgreement --pdf path/to/your/document.pdf
 ```
 
+Process all PDF files in a directory recursively:
+```bash
+python diligentizer.py --auto --crawl-dir path/to/documents --json-output results
+```
+
 Store analysis results in a SQLite database:
 ```bash
 python diligentizer.py --model legal_SoftwareLicenseAgreement --pdf path/to/your/document.pdf --sqlite data/results.db
