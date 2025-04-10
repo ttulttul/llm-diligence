@@ -62,7 +62,9 @@ class TestAnalyzer:
             "dispute_resolution": "arbitration",  # Valid enum value
             "change_of_control": "customer consent required",  # Valid enum value
             "termination_provisions": "can terminate for breach after cure period",  # Valid enum value
-            "acceptance_mechanism": "signature required"  # Valid enum value
+            "acceptance_mechanism": "signature required",  # Valid enum value
+            "licensor": "TechCorp Inc.",
+            "licensee": "Client XYZ"
         }
         
         # Only add fields that don't already exist
@@ -78,11 +80,12 @@ class TestAnalyzer:
         
         # Assertions
         assert isinstance(result, SoftwareLicenseAgreement)
-        assert result.license_type == "Perpetual"
+        assert result.license_grant == "perpetual license"
         assert result.licensor == "TechCorp Inc."
         assert result.licensee == "Client XYZ"
-        assert result.governing_law == "California"
-        assert result.limitations_of_liability is True
+        assert result.governing_law_jurisdiction == "California"
+        # Check other fields that exist in the model
+        assert result.source_filename == mock_pdf_path
         
         # Verify LLM was called with correct parameters
         mock_llm_invoke.assert_called_once()
