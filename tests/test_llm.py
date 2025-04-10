@@ -8,14 +8,21 @@ from utils.llm import cached_llm_invoke, format_content_for_anthropic
 class TestLLMUtils:
     
     @patch('utils.llm.cache')
+    @patch('utils.llm.instructor')
     @patch('utils.llm.Anthropic')
-    def test_cached_llm_invoke_caching(self, mock_anthropic, mock_cache):
+    def test_cached_llm_invoke_caching(self, mock_anthropic, mock_instructor, mock_cache):
         """Test that cached_llm_invoke uses the cache correctly."""
         # Set up mock cache behavior
         mock_cache.get.return_value = None
+        
+        # Set up mock anthropic
         mock_anthropic_instance = MagicMock()
         mock_anthropic.return_value = mock_anthropic_instance
-        mock_anthropic_instance.messages.create.return_value = MagicMock(content=[{"text": "Test response"}])
+        
+        # Set up mock instructor
+        mock_instructor_instance = MagicMock()
+        mock_instructor.from_anthropic.return_value = mock_instructor_instance
+        mock_instructor_instance.chat.completions.create.return_value = "Test response"
         
         # Call the function
         result = cached_llm_invoke(
@@ -29,8 +36,9 @@ class TestLLMUtils:
         # Check that cache was checked
         mock_cache.get.assert_called_once()
         
-        # Check that anthropic was called
-        mock_anthropic_instance.messages.create.assert_called_once()
+        # Check that instructor was called
+        mock_instructor.from_anthropic.assert_called_once()
+        mock_instructor_instance.chat.completions.create.assert_called_once()
         
         # Check that result was cached
         mock_cache.set.assert_called_once()
