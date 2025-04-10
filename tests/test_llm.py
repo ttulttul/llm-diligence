@@ -8,7 +8,7 @@ from utils.llm import cached_llm_invoke, format_content_for_anthropic
 class TestLLMUtils:
     
     @patch('utils.llm.cache')
-    @patch('utils.llm.anthropic.Anthropic')
+    @patch('utils.llm.Anthropic')
     def test_cached_llm_invoke_caching(self, mock_anthropic, mock_cache):
         """Test that cached_llm_invoke uses the cache correctly."""
         # Set up mock cache behavior
@@ -39,7 +39,7 @@ class TestLLMUtils:
         assert result == "Test response"
         
     @patch('utils.llm.cache')
-    @patch('utils.llm.anthropic.Anthropic')
+    @patch('utils.llm.Anthropic')
     def test_cached_llm_invoke_cache_hit(self, mock_anthropic, mock_cache):
         """Test that cached_llm_invoke returns cached results when available."""
         # Set up mock cache to return a cached result
