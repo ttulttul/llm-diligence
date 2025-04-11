@@ -44,4 +44,23 @@ from .due_diligence import (
     # Complete Data Room
     DueDiligenceDataRoom
 )
+from .due_diligence_areas import (
+    # Main diligence area enum
+    DiligenceAreaType,
+    # Sub-area enums
+    BusinessDiligenceSubArea,
+    FinancialDiligenceSubArea,
+    AccountingDiligenceSubArea,
+    TaxDiligenceSubArea,
+    TechnicalDiligenceSubArea,
+    LegalDiligenceSubArea,
+    OperationalDiligenceSubArea,
+    CommercialDiligenceSubArea,
+    RegulatoryDiligenceSubArea,
+    HumanResourcesDiligenceSubArea,
+    ITDiligenceSubArea,
+    IPDiligenceSubArea,
+    # Main mapping model
+    DiligenceAreaMapping
+)
 from .auto import AutoModel
