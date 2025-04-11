@@ -2,7 +2,7 @@ import sys
 import argparse
 import os
 import json
-import csv
+import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -28,134 +28,104 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
         bool: True if processing was successful, False otherwise
     """
     try:
-        # Detect file encoding and newline style
-        # First try with universal newlines mode
+        # Try to read the CSV file with pandas, which automatically handles encoding detection
         try:
-            with open(csv_input_path, 'r', newline='', encoding='utf-8') as csvfile:
-                sample = csvfile.read(1024)
-                # Reset file pointer
-                csvfile.seek(0)
-                reader = csv.DictReader(csvfile)
-                
-                if csv_input_column not in reader.fieldnames:
-                    print(f"Error: Column '{csv_input_column}' not found in CSV file")
-                    return False
+            df = pd.read_csv(csv_input_path)
         except UnicodeDecodeError:
-            # Try with different encoding if UTF-8 fails
+            # If UTF-8 fails, try with cp1252 encoding
             logger.info("UTF-8 encoding failed, trying with cp1252 encoding")
-            with open(csv_input_path, 'r', newline='', encoding='cp1252') as csvfile:
-                reader = csv.DictReader(csvfile)
+            df = pd.read_csv(csv_input_path, encoding='cp1252')
+        
+        # Check if the specified column exists
+        if csv_input_column not in df.columns:
+            print(f"Error: Column '{csv_input_column}' not found in CSV file")
+            return False
+        
+        # Get model fields to create output columns
+        model_fields = list(model_class.model_fields.keys())
+        output_columns = [f"{column_prefix}{field}" for field in model_fields]
+        
+        # Initialize output columns with empty values
+        for col in output_columns:
+            df[col] = ""
+        
+        # Process each row in the dataframe
+        for i, row in df.iterrows():
+            print(f"Processing row {i+1}...")
+            logger.info(f"Processing row {i+1}")
+            
+            # Get the text to analyze
+            text_to_analyze = row[csv_input_column]
+            
+            # Skip empty text
+            if pd.isna(text_to_analyze) or text_to_analyze == "":
+                logger.warning(f"Empty text in row {i+1}, skipping")
+                continue
+            
+            try:
+                # Create a system message for text analysis
+                system_message = (
+                    "You are a document analysis assistant that extracts structured information from text. "
+                    "Analyze the provided text and extract key details according to the specified schema."
+                )
                 
-                if csv_input_column not in reader.fieldnames:
-                    print(f"Error: Column '{csv_input_column}' not found in CSV file")
-                    return False
-            
-            # Prepare for writing output
-            fieldnames = reader.fieldnames.copy()
-            
-            # Get model fields to create output columns
-            model_fields = list(model_class.model_fields.keys())
-            output_columns = [f"{column_prefix}{field}" for field in model_fields]
-            
-            # Add output columns to fieldnames
-            fieldnames.extend(output_columns)
-            
-            # Create a list to store all rows
-            all_rows = []
-            
-            # Process each row in the CSV
-            for i, row in enumerate(reader):
-                print(f"Processing row {i+1}...")
-                logger.info(f"Processing row {i+1}")
+                # Create a prompt based on the model fields
+                field_descriptions = []
+                for field_name, field_info in model_class.model_fields.items():
+                    desc = field_info.description or f"the {field_name}"
+                    field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
                 
-                # Get the text to analyze
-                text_to_analyze = row[csv_input_column]
+                fields_json = ",\n".join(field_descriptions)
                 
-                if not text_to_analyze:
-                    logger.warning(f"Empty text in row {i+1}, skipping")
-                    all_rows.append(row)  # Keep original row
-                    continue
+                prompt = (
+                    f"Analyze the following text and extract the key details. "
+                    f"Your output must be valid JSON matching this exact schema: "
+                    f"{{\n{fields_json}\n}}. "
+                    f"Output only the JSON."
+                )
                 
-                try:
-                    # Create a system message for text analysis
-                    system_message = (
-                        "You are a document analysis assistant that extracts structured information from text. "
-                        "Analyze the provided text and extract key details according to the specified schema."
-                    )
-                    
-                    # Create a prompt based on the model fields
-                    field_descriptions = []
-                    for field_name, field_info in model_class.model_fields.items():
-                        desc = field_info.description or f"the {field_name}"
-                        field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
-                    
-                    fields_json = ",\n".join(field_descriptions)
-                    
-                    prompt = (
-                        f"Analyze the following text and extract the key details. "
-                        f"Your output must be valid JSON matching this exact schema: "
-                        f"{{\n{fields_json}\n}}. "
-                        f"Output only the JSON."
-                    )
-                    
-                    # Use cached LLM invoke for text analysis
-                    from utils.llm import cached_llm_invoke
-                    
-                    message_content = [
-                        {"type": "text", "text": prompt},
-                        {"type": "text", "text": text_to_analyze}
-                    ]
-                    
-                    response = cached_llm_invoke(
-                        system_message=system_message,
-                        user_content=message_content,
-                        max_tokens=2000,
-                        response_model=model_class
-                    )
-                    
-                    # Add analysis results to the row
-                    result_dict = response.model_dump()
-                    
-                    # Create a new row with original data
-                    new_row = row.copy()
-                    
-                    # Add analysis results with prefixed column names
-                    for field_name in model_fields:
-                        output_column = f"{column_prefix}{field_name}"
-                        if field_name in result_dict:
-                            # Convert complex objects to strings
-                            if isinstance(result_dict[field_name], (dict, list)):
-                                new_row[output_column] = json.dumps(result_dict[field_name])
-                            else:
-                                new_row[output_column] = str(result_dict[field_name])
+                # Use cached LLM invoke for text analysis
+                from utils.llm import cached_llm_invoke
+                
+                message_content = [
+                    {"type": "text", "text": prompt},
+                    {"type": "text", "text": text_to_analyze}
+                ]
+                
+                response = cached_llm_invoke(
+                    system_message=system_message,
+                    user_content=message_content,
+                    max_tokens=2000,
+                    response_model=model_class
+                )
+                
+                # Add analysis results to the dataframe
+                result_dict = response.model_dump()
+                
+                # Add analysis results with prefixed column names
+                for field_name in model_fields:
+                    output_column = f"{column_prefix}{field_name}"
+                    if field_name in result_dict:
+                        # Convert complex objects to strings
+                        if isinstance(result_dict[field_name], (dict, list)):
+                            df.at[i, output_column] = json.dumps(result_dict[field_name])
                         else:
-                            new_row[output_column] = ""
-                    
-                    all_rows.append(new_row)
-                    logger.info(f"Successfully processed row {i+1}")
-                    
-                except Exception as e:
-                    logger.error(f"Error processing row {i+1}: {e}", exc_info=True)
-                    print(f"Error processing row {i+1}: {e}")
-                    
-                    # Add the original row with empty analysis columns
-                    new_row = row.copy()
-                    for output_column in output_columns:
-                        new_row[output_column] = ""
-                    all_rows.append(new_row)
-            
-            # Write all rows to the output CSV
-            # Use the same newline style as the input file
-            newline_style = '' # Let csv module handle newlines
-            with open(csv_output_path, 'w', newline=newline_style, encoding='utf-8') as outfile:
-                writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(all_rows)
-            
-            print(f"Analysis complete. Results written to {csv_output_path}")
-            logger.info(f"CSV processing complete. Output saved to {csv_output_path}")
-            return True
-            
+                            df.at[i, output_column] = str(result_dict[field_name])
+                
+                logger.info(f"Successfully processed row {i+1}")
+                
+            except Exception as e:
+                logger.error(f"Error processing row {i+1}: {e}", exc_info=True)
+                print(f"Error processing row {i+1}: {e}")
+                # Row will keep empty values for analysis columns
+        
+        # Write the dataframe to the output CSV
+        df.to_csv(csv_output_path, index=False)
+        
+        print(f"Analysis complete. Results written to {csv_output_path}")
+        logger.info(f"CSV processing complete. Output saved to {csv_output_path}")
+        return True
+        
     except Exception as e:
         logger.error(f"Error processing CSV file: {e}", exc_info=True)
         print(f"Error processing CSV file: {e}")
