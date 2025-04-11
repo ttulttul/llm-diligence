@@ -2,6 +2,7 @@ import sys
 import argparse
 import os
 import json
+import csv
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -12,6 +13,137 @@ load_dotenv()
 from analysis import get_available_models, list_available_models, run_analysis
 from utils import logger, configure_logger
 
+
+def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class):
+    """Process a CSV file, analyzing text in the specified column and outputting results.
+    
+    Args:
+        csv_input_path: Path to the input CSV file
+        csv_input_column: Name of the column containing text to analyze
+        csv_output_path: Path to save the output CSV file
+        column_prefix: Prefix for output columns
+        model_class: The model class to use for analysis
+        
+    Returns:
+        bool: True if processing was successful, False otherwise
+    """
+    try:
+        # Read the input CSV file
+        with open(csv_input_path, 'r', newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            
+            if csv_input_column not in reader.fieldnames:
+                print(f"Error: Column '{csv_input_column}' not found in CSV file")
+                return False
+            
+            # Prepare for writing output
+            fieldnames = reader.fieldnames.copy()
+            
+            # Get model fields to create output columns
+            model_fields = list(model_class.model_fields.keys())
+            output_columns = [f"{column_prefix}{field}" for field in model_fields]
+            
+            # Add output columns to fieldnames
+            fieldnames.extend(output_columns)
+            
+            # Create a list to store all rows
+            all_rows = []
+            
+            # Process each row in the CSV
+            for i, row in enumerate(reader):
+                print(f"Processing row {i+1}...")
+                logger.info(f"Processing row {i+1}")
+                
+                # Get the text to analyze
+                text_to_analyze = row[csv_input_column]
+                
+                if not text_to_analyze:
+                    logger.warning(f"Empty text in row {i+1}, skipping")
+                    all_rows.append(row)  # Keep original row
+                    continue
+                
+                try:
+                    # Create a system message for text analysis
+                    system_message = (
+                        "You are a document analysis assistant that extracts structured information from text. "
+                        "Analyze the provided text and extract key details according to the specified schema."
+                    )
+                    
+                    # Create a prompt based on the model fields
+                    field_descriptions = []
+                    for field_name, field_info in model_class.model_fields.items():
+                        desc = field_info.description or f"the {field_name}"
+                        field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
+                    
+                    fields_json = ",\n".join(field_descriptions)
+                    
+                    prompt = (
+                        f"Analyze the following text and extract the key details. "
+                        f"Your output must be valid JSON matching this exact schema: "
+                        f"{{\n{fields_json}\n}}. "
+                        f"Output only the JSON."
+                    )
+                    
+                    # Use cached LLM invoke for text analysis
+                    from utils.llm import cached_llm_invoke
+                    
+                    message_content = [
+                        {"type": "text", "text": prompt},
+                        {"type": "text", "text": text_to_analyze}
+                    ]
+                    
+                    response = cached_llm_invoke(
+                        system_message=system_message,
+                        user_content=message_content,
+                        max_tokens=2000,
+                        response_model=model_class
+                    )
+                    
+                    # Add analysis results to the row
+                    result_dict = response.model_dump()
+                    
+                    # Create a new row with original data
+                    new_row = row.copy()
+                    
+                    # Add analysis results with prefixed column names
+                    for field_name in model_fields:
+                        output_column = f"{column_prefix}{field_name}"
+                        if field_name in result_dict:
+                            # Convert complex objects to strings
+                            if isinstance(result_dict[field_name], (dict, list)):
+                                new_row[output_column] = json.dumps(result_dict[field_name])
+                            else:
+                                new_row[output_column] = str(result_dict[field_name])
+                        else:
+                            new_row[output_column] = ""
+                    
+                    all_rows.append(new_row)
+                    logger.info(f"Successfully processed row {i+1}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing row {i+1}: {e}", exc_info=True)
+                    print(f"Error processing row {i+1}: {e}")
+                    
+                    # Add the original row with empty analysis columns
+                    new_row = row.copy()
+                    for output_column in output_columns:
+                        new_row[output_column] = ""
+                    all_rows.append(new_row)
+            
+            # Write all rows to the output CSV
+            with open(csv_output_path, 'w', newline='', encoding='utf-8') as outfile:
+                writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(all_rows)
+            
+            print(f"Analysis complete. Results written to {csv_output_path}")
+            logger.info(f"CSV processing complete. Output saved to {csv_output_path}")
+            return True
+            
+    except Exception as e:
+        logger.error(f"Error processing CSV file: {e}", exc_info=True)
+        print(f"Error processing CSV file: {e}")
+        return False
 
 def main():
     """Main entry point with command line argument parsing."""
@@ -28,6 +160,11 @@ def main():
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
         parser.add_argument("--json-output", type=str, metavar="DIR",
                            help="Output results as JSON files to specified directory")
+        parser.add_argument("--csv-input", type=str, help="Path to CSV file for batch processing")
+        parser.add_argument("--csv-input-column", type=str, help="Column name in CSV containing text to analyze")
+        parser.add_argument("--csv-output", type=str, help="Path to output CSV file with analysis results")
+        parser.add_argument("--csv-output-column-prefix", type=str, default="analysis_",
+                           help="Prefix for output columns in CSV (default: analysis_)")
         parser.add_argument("--log-level", type=str, default="WARNING", 
                            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                            help="Set the logging level (default: WARNING)")
@@ -102,8 +239,33 @@ def main():
             json_output_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"JSON output will be saved to: {json_output_dir}")
         
-        # Process a single file or crawl a directory
-        if args.crawl_dir:
+        # Process a CSV file if specified
+        if args.csv_input:
+            if not args.csv_input_column:
+                print("Error: --csv-input-column is required when using --csv-input")
+                return 1
+            
+            if not args.csv_output:
+                print("Error: --csv-output is required when using --csv-input")
+                return 1
+                
+            # Process the CSV file
+            logger.info(f"Processing CSV file: {args.csv_input}")
+            print(f"Processing CSV file: {args.csv_input}")
+            
+            success = process_csv_file(
+                args.csv_input,
+                args.csv_input_column,
+                args.csv_output,
+                args.csv_output_column_prefix,
+                model_class
+            )
+            
+            if not success:
+                return 1
+                
+        # Process a directory of files
+        elif args.crawl_dir:
             # Get all PDF files in the directory and subdirectories
             crawl_path = Path(args.crawl_dir)
             if not crawl_path.exists() or not crawl_path.is_dir():

@@ -57,9 +57,12 @@ def format_content_for_anthropic(content):
         for item in content:
             if isinstance(item, str):
                 formatted_content.append({"type": "text", "text": item})
-            else:
+            elif isinstance(item, dict) and "type" in item and "text" in item:
                 # Already formatted content
                 formatted_content.append(item)
+            else:
+                # Try to convert to string if not already formatted
+                formatted_content.append({"type": "text", "text": str(item)})
         return formatted_content
     elif isinstance(content, str) and content.lower().endswith('.pdf'):
         # Handle PDF files by extracting text
