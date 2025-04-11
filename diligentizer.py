@@ -28,13 +28,27 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
         bool: True if processing was successful, False otherwise
     """
     try:
-        # Read the input CSV file
-        with open(csv_input_path, 'r', newline='', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            
-            if csv_input_column not in reader.fieldnames:
-                print(f"Error: Column '{csv_input_column}' not found in CSV file")
-                return False
+        # Detect file encoding and newline style
+        # First try with universal newlines mode
+        try:
+            with open(csv_input_path, 'r', newline='', encoding='utf-8') as csvfile:
+                sample = csvfile.read(1024)
+                # Reset file pointer
+                csvfile.seek(0)
+                reader = csv.DictReader(csvfile)
+                
+                if csv_input_column not in reader.fieldnames:
+                    print(f"Error: Column '{csv_input_column}' not found in CSV file")
+                    return False
+        except UnicodeDecodeError:
+            # Try with different encoding if UTF-8 fails
+            logger.info("UTF-8 encoding failed, trying with cp1252 encoding")
+            with open(csv_input_path, 'r', newline='', encoding='cp1252') as csvfile:
+                reader = csv.DictReader(csvfile)
+                
+                if csv_input_column not in reader.fieldnames:
+                    print(f"Error: Column '{csv_input_column}' not found in CSV file")
+                    return False
             
             # Prepare for writing output
             fieldnames = reader.fieldnames.copy()
@@ -131,7 +145,9 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
                     all_rows.append(new_row)
             
             # Write all rows to the output CSV
-            with open(csv_output_path, 'w', newline='', encoding='utf-8') as outfile:
+            # Use the same newline style as the input file
+            newline_style = '' # Let csv module handle newlines
+            with open(csv_output_path, 'w', newline=newline_style, encoding='utf-8') as outfile:
                 writer = csv.DictWriter(outfile, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(all_rows)
