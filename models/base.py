@@ -67,7 +67,8 @@ def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
         for name, obj in inspect.getmembers(module):
             if (inspect.isclass(obj) and 
                 issubclass(obj, DiligentizerModel) and 
-                obj != DiligentizerModel):
+                obj != DiligentizerModel and
+                obj.__module__ == module_name):  # Check if the class was defined in this module
                 # Store the model with a friendly name: module_modelname
                 friendly_name = f"{module_name.split('.')[-1]}_{name}"
                 models_dict[friendly_name] = obj
