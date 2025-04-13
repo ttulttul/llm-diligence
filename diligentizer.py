@@ -56,7 +56,7 @@ def save_to_db(db_path, response):
     except Exception as e:
         logger.error(f"Error saving to database: {e}", exc_info=True)
 
-def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class):
+def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class, prompt_extra=None):
     """Process a CSV file, analyzing text in the specified column and outputting results.
     
     Args:
@@ -65,6 +65,7 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
         csv_output_path: Path to save the output CSV file
         column_prefix: Prefix for output columns
         model_class: The model class to use for analysis
+        prompt_extra: Additional text to append to every LLM prompt
         
     Returns:
         bool: True if processing was successful, False otherwise
@@ -135,8 +136,8 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
                 ]
                 
                 # Add extra prompt text if provided
-                if args.prompt_extra:
-                    message_content.append({"type": "text", "text": args.prompt_extra})
+                if prompt_extra:
+                    message_content.append({"type": "text", "text": prompt_extra})
                 
                 response = cached_llm_invoke(
                     system_message=system_message,
@@ -327,7 +328,8 @@ def main():
                 args.csv_input_column,
                 args.csv_output,
                 args.csv_output_column_prefix,
-                model_class
+                model_class,
+                args.prompt_extra
             )
             
             if not success:
