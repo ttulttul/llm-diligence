@@ -38,7 +38,8 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbo
 def _run_auto(pdf_path: str,
               model_class: Type[DiligentizerModel],
               db_path: Optional[str] = None,
-              classify_only: bool = False) -> Optional[DiligentizerModel]:
+              classify_only: bool = False,
+              prompt_extra: Optional[str] = None) -> Optional[DiligentizerModel]:
     "Use automatic model selection"
 
     logger.info(f"Using AutoModel for {pdf_path}")
@@ -61,7 +62,7 @@ def _run_auto(pdf_path: str,
             logger.info(f"AutoModel selected: {selected_model_name}")
             
             selected_model_class = models_dict[selected_model_name]
-            return run_analysis(selected_model_class, pdf_path, db_path)
+            return run_analysis(selected_model_class, pdf_path, db_path, prompt_extra=prompt_extra)
 
     except Exception as e:
         logger.error(f"Error during auto model selection: {e}", exc_info=True)
@@ -73,14 +74,15 @@ def _run_auto(pdf_path: str,
 def run_analysis(model_class: Type[DiligentizerModel],
                  pdf_path: str,
                  db_path: Optional[str] = None,
-                 classify_only: bool = False) -> Optional[DiligentizerModel]:
+                 classify_only: bool = False,
+                 prompt_extra: Optional[str] = None) -> Optional[DiligentizerModel]:
     """Run the analysis with the selected model. Return the model object."""
 
     # If the model is the automatic model, then dispatch analysis to the auto model.
     if model_class.__name__ == "AutoModel":
-        return _run_auto(pdf_path, model_class, db_path, classify_only)
+        return _run_auto(pdf_path, model_class, db_path, classify_only, prompt_extra)
     else:
-        return _run_manual(pdf_path, model_class, db_path)
+        return _run_manual(pdf_path, model_class, db_path, prompt_extra)
 
 def _get_prompt(model_class):
     field_descriptions = []
@@ -101,7 +103,8 @@ def _get_prompt(model_class):
     
 def _run_manual(pdf_path: str,
                 model_class: DiligentizerModel,
-                db_path: Optional[str] = None) -> Optional[DiligentizerModel]:
+                db_path: Optional[str] = None,
+                prompt_extra: Optional[str] = None) -> Optional[DiligentizerModel]:
     "Get the LLM to analyze the document using the specified model"
 
     logger.info(f"Analyzing {pdf_path} with {model_class.__name__}")
@@ -113,6 +116,10 @@ def _run_manual(pdf_path: str,
         {"type": "text", "text": prompt},
         pdf_input  # instructor's PDF class handles formatting correctly
     ]
+    
+    # Add extra prompt text if provided
+    if prompt_extra:
+        message_content.append({"type": "text", "text": prompt_extra})
     
     logger.info(f"Sending document to LLM for analysis: Prompt: {prompt}")
     
