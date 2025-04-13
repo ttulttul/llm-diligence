@@ -216,6 +216,22 @@ def main():
             json_output_dir = Path(args.json_output)
             json_output_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"JSON output will be saved to: {json_output_dir}")
+            
+        # Validate PDF file if specified
+        if args.pdf and not args.crawl_dir and not args.csv_input:
+            pdf_path = Path(args.pdf)
+            if not pdf_path.exists():
+                print(f"Error: PDF file not found: {args.pdf}")
+                logger.error(f"PDF file not found: {args.pdf}")
+                return 1
+            if not pdf_path.is_file():
+                print(f"Error: Not a file: {args.pdf}")
+                logger.error(f"Not a file: {args.pdf}")
+                return 1
+            if not os.access(pdf_path, os.R_OK):
+                print(f"Error: PDF file is not readable: {args.pdf}")
+                logger.error(f"PDF file is not readable: {args.pdf}")
+                return 1
         
         # Process a CSV file if specified
         if args.csv_input:
