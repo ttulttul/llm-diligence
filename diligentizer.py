@@ -337,6 +337,7 @@ def main():
         
         for success, file_path, result, exception in results_generator:
             if success:
+                logger.info(f"result: SUCCESS {file_path} -> {result}")
                 success_count += 1
                 
                 # Save result as JSON if requested (only if not already done by process_directory)
@@ -355,9 +356,11 @@ def main():
                         print(f"Error saving JSON output: {e}")
                 
                 # Save to db if requested (only if not already done by process_directory)
-                if args.sqlite and result and not args.crawl_dir:
+                if args.sqlite and result:
+                    logger.info(f"Saving to db: {result}")
                     save_to_db(args.sqlite, result)
             else:
+                logger.info(f"result: FAILURE {file_path} -> exception={exception}")
                 failure_count += 1
         
         # Print summary if processing multiple files
