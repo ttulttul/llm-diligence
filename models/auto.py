@@ -50,7 +50,8 @@ class AutoModel(DiligentizerModel):
         """Filter models to only include those that directly inherit from the specified parent class."""
         filtered_models = {}
         for name, model_class in available_models.items():
-            if name == "auto_AutoModel":  # Skip the auto model itself
+            # Skip models defined within the auto model module
+            if model_class.__module__ == __name__:
                 continue
             
             # Check if this model directly inherits from the parent class
@@ -68,7 +69,8 @@ class AutoModel(DiligentizerModel):
                 continue
             
             # Check if this model directly inherits from DiligentizerModel
-            if inspect.getmro(model_class)[1] == DiligentizerModel:
+            if DiligentizerModel in model_class.__bases__:
+                logger.info(f"BASE_MODEL: {name} {model_class}")
                 base_models[name] = model_class
         
         return base_models
@@ -146,6 +148,8 @@ Respond with only the exact model name (one of the keys from the available model
             logger.warning("No base models found that directly inherit from DiligentizerModel")
             # Fall back to using all models
             base_models = {k: v for k, v in available_models.items() if k != "auto_AutoModel"}
+
+        logger.info(f"base models: {base_models}")
         
         phase1_description = "PHASE 1: First, select the broad category that best matches this document."
         phase1_response = cls._select_model_with_llm(pdf_input, base_models, phase1_description)

@@ -56,10 +56,6 @@ def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
     
     # Walk through all modules in the models package
     for _, module_name, _ in pkgutil.iter_modules(models.__path__, models.__name__ + '.'):
-        # Skip the base module
-        if module_name.endswith('.base'):
-            continue
-            
         # Import the module
         module = importlib.import_module(module_name)
         
