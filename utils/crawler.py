@@ -95,11 +95,9 @@ def process_directory(
         return
         
     logger.info(f"Found {len(pdf_files)} PDF files to process")
-    print(f"Processing {len(pdf_files)} PDF files from {crawl_dir}...")
     
     # Determine whether to use parallel processing
     if parallel > 0:
-        print(f"Processing files in parallel using {parallel} processes...")
         logger.info(f"Using parallel processing with {parallel} processes")
         
         # Prepare arguments for each file
@@ -112,11 +110,6 @@ def process_directory(
         with ProcessPoolExecutor(max_workers=parallel) as executor:
             for i, (success, file_path, result, exception) in enumerate(executor.map(process_file, process_args)):
                 relative_path = Path(file_path).relative_to(crawl_path)
-                if success:
-                    print(f"\nProcessed ({i+1}/{len(pdf_files)}): {relative_path}")
-                else:
-                    print(f"\nError processing ({i+1}/{len(pdf_files)}): {relative_path}")
-                    print(f"Error: {exception}")
                 
                 # Yield the result to the caller
                 yield (success, file_path, result, exception)
@@ -125,16 +118,9 @@ def process_directory(
         # Process files sequentially
         for i, pdf_path in enumerate(pdf_files):
             relative_path = pdf_path.relative_to(crawl_path)
-            print(f"\nProcessing ({i+1}/{len(pdf_files)}): {relative_path}")
             logger.info(f"Processing file: {pdf_path}")
             
             success, file_path, result, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only))
-            
-            if success:
-                print(f"Successfully processed: {relative_path}")
-            else:
-                print(f"Error processing: {relative_path}")
-                print(f"Error: {exception}")
             
             # Yield the result to the caller
             yield (success, file_path, result, exception)

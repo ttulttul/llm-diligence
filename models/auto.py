@@ -66,7 +66,7 @@ Respond with only the exact model name (one of the keys from the available model
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
 
-        logger.info(f"Calling LLM from AutoModel: {message_content}")
+        logger.debug(f"Calling LLM from AutoModel: {message_content}")
         
         # Make the API call with cached instructor
         response = cached_llm_invoke(
