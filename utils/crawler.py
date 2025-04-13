@@ -9,7 +9,7 @@ from models.base import DiligentizerModel
 from analysis import run_analysis
 from utils import logger
 
-def process_file(args: Tuple) -> Tuple[bool, str, Optional[Exception]]:
+def process_file(args: Tuple) -> Tuple[bool, str, Optional[DiligentizerModel], Optional[Exception]]:
     """
     Process a single PDF file.
     
@@ -18,7 +18,7 @@ def process_file(args: Tuple) -> Tuple[bool, str, Optional[Exception]]:
                                selected_model, crawl_path)
         
     Returns:
-        Tuple of (success, file_path, exception)
+        Tuple of (success, file_path, result, exception)
     """
     pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only = args
     
@@ -49,12 +49,12 @@ def process_file(args: Tuple) -> Tuple[bool, str, Optional[Exception]]:
                 logger.info(f"JSON output saved to: {output_path}")
             except Exception as e:
                 logger.error(f"Failed to save JSON output for {pdf_path}: {e}")
-                return False, str(pdf_path), e
+                return False, str(pdf_path), result, e
                 
-        return True, str(pdf_path), None
+        return True, str(pdf_path), result, None
     except Exception as e:
         logger.error(f"Failed to process {pdf_path}: {e}")
-        return False, str(pdf_path), e
+        return False, str(pdf_path), None, e
 
 def process_directory(
     crawl_dir: str,
@@ -64,7 +64,7 @@ def process_directory(
     sqlite_path: Optional[str] = None,
     parallel: int = 0,
     classify_only: bool = False
-) -> int:
+):
     """
     Recursively process all PDF files in the specified directory.
     
@@ -77,19 +77,22 @@ def process_directory(
         parallel: Number of parallel processes to run
         classify_only: Will be passed to run_analysis()
         
-    Returns:
-        int: 0 for success, 1 for failure
+    Yields:
+        Tuple containing (success: bool, file_path: str, result: Optional[DiligentizerModel], 
+                          exception: Optional[Exception])
     """
     # Get all PDF files in the directory and subdirectories
     crawl_path = Path(crawl_dir)
     if not crawl_path.exists() or not crawl_path.is_dir():
         logger.error(f"Directory not found: {crawl_dir}")
-        return 1
+        yield (False, crawl_dir, None, ValueError(f"Directory not found: {crawl_dir}"))
+        return
         
     pdf_files = list(crawl_path.glob('**/*.pdf'))
     if not pdf_files:
         logger.warning(f"No PDF files found in {crawl_dir}")
-        return 0
+        yield (False, crawl_dir, None, ValueError(f"No PDF files found in {crawl_dir}"))
+        return
         
     logger.info(f"Found {len(pdf_files)} PDF files to process")
     print(f"Processing {len(pdf_files)} PDF files from {crawl_dir}...")
@@ -106,44 +109,32 @@ def process_directory(
         ]
         
         # Process files in parallel
-        success_count = 0
-        failure_count = 0
-        
         with ProcessPoolExecutor(max_workers=parallel) as executor:
-            for i, (success, file_path, exception) in enumerate(executor.map(process_file, process_args)):
+            for i, (success, file_path, result, exception) in enumerate(executor.map(process_file, process_args)):
                 relative_path = Path(file_path).relative_to(crawl_path)
                 if success:
                     print(f"\nProcessed ({i+1}/{len(pdf_files)}): {relative_path}")
-                    success_count += 1
                 else:
                     print(f"\nError processing ({i+1}/{len(pdf_files)}): {relative_path}")
                     print(f"Error: {exception}")
-                    failure_count += 1
-        
-        print(f"\nCompleted processing {len(pdf_files)} files.")
-        print(f"Success: {success_count}, Failures: {failure_count}")
+                
+                # Yield the result to the caller
+                yield (success, file_path, result, exception)
         
     else:
         # Process files sequentially
-        success_count = 0
-        failure_count = 0
-        
         for i, pdf_path in enumerate(pdf_files):
             relative_path = pdf_path.relative_to(crawl_path)
             print(f"\nProcessing ({i+1}/{len(pdf_files)}): {relative_path}")
             logger.info(f"Processing file: {pdf_path}")
             
-            success, _, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only))
+            success, file_path, result, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only))
             
             if success:
                 print(f"Successfully processed: {relative_path}")
-                success_count += 1
             else:
                 print(f"Error processing: {relative_path}")
                 print(f"Error: {exception}")
-                failure_count += 1
-        
-        print(f"\nCompleted processing {len(pdf_files)} files.")
-        print(f"Success: {success_count}, Failures: {failure_count}")
-    
-    return 0
+            
+            # Yield the result to the caller
+            yield (success, file_path, result, exception)
