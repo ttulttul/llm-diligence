@@ -193,18 +193,8 @@ def main():
                 return 1
         # If no model specified and not using auto, allow interactive selection
         elif not args.model:
-            list_available_models(models_dict)
-            print("\nSelect a model by number or name (or 'q' to quit):")
-            choice = input("> ").strip()
-            
-            if choice.lower() == 'q':
-                return 0
-                
-            # Check if user entered a number
-            if choice.isdigit() and 1 <= int(choice) <= len(models_dict):
-                selected_model = list(models_dict.keys())[int(choice) - 1]
-            else:
-                selected_model = choice
+            print("Error: you must provide a model using --model or --auto")
+            return 1
         else:
             # If args.model is provided, use it directly
             selected_model = args.model
