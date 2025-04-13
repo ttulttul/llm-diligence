@@ -144,6 +144,8 @@ def main():
                            help="Path to the PDF file (default: software_license.pdf)")
         parser.add_argument("--crawl-dir", type=str,
                            help="Recursively process all PDF files in the specified directory")
+        parser.add_argument("--parallel", type=int, default=0, metavar="N",
+                           help="Process files in parallel using N processes (0 for sequential processing)")
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
         parser.add_argument("--json-output", type=str, metavar="DIR",
                            help="Output results as JSON files to specified directory")
@@ -248,7 +250,8 @@ def main():
                 model_class,
                 selected_model,
                 json_output_dir,
-                args.sqlite
+                args.sqlite,
+                args.parallel
             )
             if return_code != 0:
                 return return_code
