@@ -142,63 +142,65 @@ Respond with only the exact model name (one of the keys from the available model
         # Track the selection path
         selection_path = []
         
-        # Phase 1: Select from base models (those directly inheriting from DiligentizerModel)
-        base_models = cls._get_base_models(available_models)
-        if not base_models:
+        # Initialize with base models (those directly inheriting from DiligentizerModel)
+        current_models = cls._get_base_models(available_models)
+        if not current_models:
             logger.warning("No base models found that directly inherit from DiligentizerModel")
             # Fall back to using all models
-            base_models = {k: v for k, v in available_models.items() if k != "auto_AutoModel"}
+            current_models = {k: v for k, v in available_models.items() if k != "auto_AutoModel"}
 
-        logger.info(f"base models: {base_models}")
+        logger.info(f"Starting with models: {current_models}")
         
-        phase1_description = "PHASE 1: First, select the broad category that best matches this document."
-        phase1_response = cls._select_model_with_llm(pdf_input, base_models, phase1_description)
+        # Current model starts as None
+        current_model_key = None
+        current_model_class = None
         
-        base_model_name = phase1_response.model_name
-        base_model_key = cls._find_model_key(base_model_name, base_models)
-        
-        if not base_model_key:
-            raise ValueError(f"LLM selected invalid base model: {base_model_name}. Valid options are: {', '.join(base_models.keys())}")
-        
-        base_model_class = base_models[base_model_key]
-        selection_path.append(base_model_key)
-        logger.info(f"Phase 1 selected base model: {base_model_key} ({base_model_class.__name__})")
-        
-        # Current model is the base model selected in phase 1
-        current_model_key = base_model_key
-        current_model_class = base_model_class
-        
-        # Continue with additional phases as long as there are derived models
-        phase_num = 2
-        while True:
-            # Get models that directly inherit from the current model
-            derived_models = cls._filter_models_by_parent(available_models, current_model_class)
+        # Single loop for all phases
+        phase_num = 1
+        while current_models:
+            # Create appropriate phase description
+            if phase_num == 1:
+                phase_description = "PHASE 1: First, select the broad category that best matches this document."
+            else:
+                phase_description = f"PHASE {phase_num}: Now, select the specific type of {current_model_class.__name__} that best matches this document."
             
-            if not derived_models:
+            # Select model with LLM
+            phase_response = cls._select_model_with_llm(pdf_input, current_models, phase_description)
+            
+            # Get model name and find corresponding key
+            model_name = phase_response.model_name
+            model_key = cls._find_model_key(model_name, current_models)
+            
+            if not model_key:
+                if phase_num == 1:
+                    # If we fail at phase 1, we have no valid model
+                    raise ValueError(f"LLM selected invalid model: {model_name}. Valid options are: {', '.join(current_models.keys())}")
+                else:
+                    # If we fail at a later phase, we can use the last valid model
+                    logger.warning(f"LLM selected invalid model: {model_name}. Stopping at {current_model_key}")
+                    break
+            
+            # Update current model
+            current_model_key = model_key
+            current_model_class = current_models[model_key]
+            selection_path.append(current_model_key)
+            
+            logger.info(f"Phase {phase_num} selected model: {current_model_key} ({current_model_class.__name__})")
+            
+            # Get models for next phase (those directly inheriting from current model)
+            current_models = cls._filter_models_by_parent(available_models, current_model_class)
+            
+            if not current_models:
                 # No more derived models, we've reached a leaf model
                 logger.info(f"No more derived models from {current_model_class.__name__}, selection complete")
                 break
             
-            # Select from derived models
-            phase_description = f"PHASE {phase_num}: Now, select the specific type of {current_model_class.__name__} that best matches this document."
-            phase_response = cls._select_model_with_llm(pdf_input, derived_models, phase_description)
-            
-            derived_model_name = phase_response.model_name
-            derived_model_key = cls._find_model_key(derived_model_name, derived_models)
-            
-            if not derived_model_key:
-                logger.warning(f"LLM selected invalid derived model: {derived_model_name}. Stopping at {current_model_key}")
-                break
-            
-            # Update current model to the selected derived model
-            current_model_key = derived_model_key
-            current_model_class = derived_models[derived_model_key]
-            selection_path.append(current_model_key)
-            
-            logger.info(f"Phase {phase_num} selected derived model: {current_model_key} ({current_model_class.__name__})")
             phase_num += 1
         
-        # Final selected model
+        # Final selected model (if we have one)
+        if current_model_key is None:
+            raise ValueError("Failed to select any valid model")
+            
         chosen_model_name = current_model_key
         model_class = current_model_class
         
