@@ -1,8 +1,5 @@
 import os
 import sys
-import importlib
-import inspect
-import pkgutil
 import json
 from typing import Dict, Type, Optional, List
 from datetime import datetime
@@ -10,33 +7,10 @@ from instructor.multimodal import PDF
 
 # Import the models package
 import models
-from models.base import DiligentizerModel
+from models.base import DiligentizerModel, get_available_models
 from utils.llm import cached_llm_invoke, get_claude_model_name
 from utils import logger
 
-def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
-    """Discover all available models in the models package."""
-    models_dict = {}
-    
-    # Walk through all modules in the models package
-    for _, module_name, _ in pkgutil.iter_modules(models.__path__, models.__name__ + '.'):
-        # Skip the base module
-        if module_name.endswith('.base'):
-            continue
-            
-        # Import the module
-        module = importlib.import_module(module_name)
-        
-        # Find all DiligentizerModel subclasses in the module
-        for name, obj in inspect.getmembers(module):
-            if (inspect.isclass(obj) and 
-                issubclass(obj, DiligentizerModel) and 
-                obj != DiligentizerModel):
-                # Store the model with a friendly name: module_modelname
-                friendly_name = f"{module_name.split('.')[-1]}_{name}"
-                models_dict[friendly_name] = obj
-                
-    return models_dict
 
 def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbose: bool = False) -> None:
     """Print a formatted list of all available models.

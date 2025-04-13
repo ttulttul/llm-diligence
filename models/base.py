@@ -1,7 +1,11 @@
 from pydantic import BaseModel, Field, field_serializer
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Type
 from datetime import datetime, date
 import json
+import importlib
+import inspect
+import pkgutil
+import sys
 
 # Base class for all models
 class DiligentizerModel(BaseModel):
@@ -42,3 +46,30 @@ class DueDiligenceDocument(DiligentizerModel):
     document_id: Optional[str] = Field(None, description="Unique identifier for the document")
     confidentiality_level: Optional[str] = Field(None, description="Level of confidentiality of the document")
     owner: Optional[str] = Field(None, description="Document owner or responsible party")
+
+def get_available_models() -> Dict[str, Type[DiligentizerModel]]:
+    """Discover all available models in the models package."""
+    models_dict = {}
+    
+    # Import the models package
+    import models
+    
+    # Walk through all modules in the models package
+    for _, module_name, _ in pkgutil.iter_modules(models.__path__, models.__name__ + '.'):
+        # Skip the base module
+        if module_name.endswith('.base'):
+            continue
+            
+        # Import the module
+        module = importlib.import_module(module_name)
+        
+        # Find all DiligentizerModel subclasses in the module
+        for name, obj in inspect.getmembers(module):
+            if (inspect.isclass(obj) and 
+                issubclass(obj, DiligentizerModel) and 
+                obj != DiligentizerModel):
+                # Store the model with a friendly name: module_modelname
+                friendly_name = f"{module_name.split('.')[-1]}_{name}"
+                models_dict[friendly_name] = obj
+                
+    return models_dict
