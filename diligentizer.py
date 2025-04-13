@@ -308,6 +308,9 @@ def main():
             print("Error: --classify-to-csv can only be used with --classify-only")
             logger.error("--classify-to-csv used without --classify-only")
             return 1
+
+        if args.prompt_extra:
+            print(f"Adding extra prompt: {args.prompt_extra}")
             
         # Process a CSV file if specified
         if args.csv_input:

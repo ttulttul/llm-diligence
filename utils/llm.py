@@ -9,6 +9,8 @@ import functools
 from pydantic import BaseModel
 from unittest.mock import MagicMock
 
+from utils import logger
+
 def get_claude_model_name():
     """Get the Claude model name from environment variable or use default."""
     return os.environ.get("CLAUDE_MODEL_NAME", "claude-3-7-sonnet-20250219")
@@ -78,6 +80,8 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
+    logger.info(f"cached_llm_invoke: {user_content}")
+
     # If model_name is None, set it automatically to the default
     if model_name is None:
         model_name = get_claude_model_name()
@@ -88,6 +92,7 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
     # Check if the result is already cached
     cached_result = cache.get(cache_key)
     if cached_result is not None:
+        logger.info("cached_llm_invoke: using cached result")
         # If no response_model is provided, just return the cached string
         if response_model is None:
             return cached_result

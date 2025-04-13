@@ -48,7 +48,7 @@ def _run_auto(pdf_path: str,
     
     try:
         # Use the auto model to select the appropriate model
-        auto_model = model_class.from_pdf(pdf_path, models_dict, classify_only)
+        auto_model = model_class.from_pdf(pdf_path, models_dict, classify_only, prompt_extra=prompt_extra)
         
         if classify_only:
             logger.info(f"classify_only: returning {auto_model}")
