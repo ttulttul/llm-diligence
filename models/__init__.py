@@ -9,7 +9,13 @@ class ModelEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-from .base import DiligentizerModel
+from .base import (
+    DiligentizerModel, 
+    Agreement, 
+    CustomerAgreement, 
+    LicenseAgreement,
+    EmploymentAgreement
+)
 from .contracts import EmploymentContract
 from .financial import FinancialStatement
 from .legal import (
@@ -21,6 +27,7 @@ from .legal import (
     SourceCodeEscrowType, TransitionServiceType, MaterialAdverseChangeType,
     AssignmentProvisionType
 )
+from .cloud import CloudServiceType, CloudServiceAgreement
 from .due_diligence_areas import (
     # Main diligence area enum
     DiligenceAreaType,

@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import Field
-from .base import Agreement
+from .cloud import CloudServiceAgreement, CloudServiceType
 from .legal import (
     WarrantyType,
     LiabilityLimit,
@@ -49,22 +49,20 @@ class DataProcessingScope(str, Enum):
     AS_PERMITTED_BY_CUSTOMER = "as otherwise explicitly permitted by the customer"
     LIMITED_SUPPORT = "as necessary for providing technical support requested by customer"
 
-class IaasCustomerAgreement(Agreement):
+class IaasCustomerAgreement(CloudServiceAgreement):
     """
     Represents the key concepts extracted from a generic Infrastructure as a Service (IaaS) Customer Agreement.
     Aims to be provider-agnostic (e.g., applicable to AWS, Azure, GCP, etc.).
     """
     # Parties and Agreement Setup
-    provider_name: str = Field(..., description="The name of the IaaS provider entity party to the agreement.")
     customer_entity_description: str = Field(..., description="Description of the customer entity (e.g., 'you or the entity you represent').")
     customer_account_country: Optional[str] = Field(None, description="The country associated with the customer's account, often determining the specific provider entity, governing law, and taxes.")
     effective_date_description: str = Field(..., description="Describes how the agreement becomes effective (e.g., account creation, first use, explicit acceptance).")
     acceptance_mechanism: List[AcceptanceMechanism] = Field(..., description="Methods by which the customer accepts the agreement terms (e.g., Clickwrap, Use, Signature).")
     last_updated_date: Optional[str] = Field(None, description="The 'Last Updated' or version date mentioned on the agreement document.")
 
-    # Service Provision and Use
-    service_description: str = Field("Access to and use of the provider's IaaS services, potentially governed by service-specific terms.", description="General description of the services covered.")
-    service_level_agreements_exist: bool = Field(..., description="Indicates if Service Level Agreements (SLAs) apply to some or all services.")
+    # Service type is always IAAS for this agreement
+    service_type: CloudServiceType = Field(CloudServiceType.IAAS, description="The type of cloud service (always IaaS for this agreement)")
     sla_type: Optional[ServiceLevelAgreementType] = Field(None, description="General type(s) of SLA guarantees offered (e.g., Availability, Performance). Specifics often vary per service.")
     service_specific_terms_apply: bool = Field(..., description="Indicates if specific terms apply to individual services offered by the provider.")
     third_party_content_allowed: Optional[bool] = Field(None, description="Specifies if third-party content/services can be used via the platform, potentially governed by separate terms.")

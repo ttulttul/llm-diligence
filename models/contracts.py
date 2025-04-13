@@ -1,7 +1,7 @@
 from pydantic import Field, field_validator, BaseModel
 from typing import List, Optional
 from datetime import date
-from .base import DiligentizerModel, Agreement
+from .base import DiligentizerModel, EmploymentAgreement
 import re
 
 class Salary(BaseModel):
@@ -35,10 +35,8 @@ class RestrictiveCovenants(BaseModel):
     confidentiality_clause_present: Optional[bool] = Field(None, description="Indicates if a confidentiality clause or agreement is referenced/included.")
     intellectual_property_assignment: Optional[bool] = Field(None, description="Indicates if there's a clause assigning IP created during employment to the employer.")
 
-class EmploymentContract(Agreement):
+class EmploymentContract(EmploymentAgreement):
     """Represents key details extracted from an employment agreement."""
-    employer: str = Field(..., description="The employer's legal name.")
-    employee: str = Field(..., description="The employee's full name.")
     job_title: Optional[str] = Field(None, description="The employee's job title.")
     
     agreement_date: Optional[date] = Field(None, description="The date the agreement was signed or executed.")

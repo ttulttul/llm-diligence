@@ -33,6 +33,31 @@ class Agreement(DiligentizerModel):
     parties: Optional[List[str]] = Field(None, description="The parties involved in the agreement")
     governing_law: Optional[str] = Field(None, description="The jurisdiction's laws governing the agreement")
 
+# Base class for customer agreements
+class CustomerAgreement(Agreement):
+    """Base class for agreements between a service provider and a customer"""
+    provider_name: str = Field(..., description="The name of the service provider entity")
+    customer_name: str = Field(..., description="The name of the customer entity")
+    start_date: Optional[date] = Field(None, description="The start date of the agreement")
+    end_date: Optional[date] = Field(None, description="The end date of the agreement")
+    auto_renews: Optional[bool] = Field(None, description="Whether the agreement automatically renews")
+
+# Base class for license agreements
+class LicenseAgreement(Agreement):
+    """Base class for all types of license agreements"""
+    licensor: str = Field(..., description="The party granting the license")
+    licensee: str = Field(..., description="The party receiving the license")
+    license_scope: Optional[str] = Field(None, description="The scope of the license grant")
+    license_restrictions: Optional[List[str]] = Field(None, description="Restrictions on the license")
+
+# Base class for employment agreements
+class EmploymentAgreement(Agreement):
+    """Base class for all types of employment agreements"""
+    employer: str = Field(..., description="The employer entity")
+    employee: str = Field(..., description="The employee name")
+    start_date: Optional[date] = Field(None, description="Employment start date")
+    compensation_description: Optional[str] = Field(None, description="Description of compensation terms")
+
 # Base class for all financial documents
 class FinancialDocument(DiligentizerModel):
     """Base class for all financial documents and statements"""

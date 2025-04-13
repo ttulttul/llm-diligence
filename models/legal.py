@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import Field
-from .base import DiligentizerModel, Agreement
+from .base import DiligentizerModel, LicenseAgreement
 
 class LicenseGrantType(str, Enum):
     USE = "use only"
@@ -140,10 +140,8 @@ class AssignmentProvisionType(str, Enum):
     UNRESTRICTED = "unrestricted assignment"
     ACQUIRER_SPECIFIC = "specific acquirer restrictions"
 
-class SoftwareLicenseAgreement(Agreement):
+class SoftwareLicenseAgreement(LicenseAgreement):
     # Parties and basic term information
-    licensor: str = Field(..., description="The party granting the license")
-    licensee: str = Field(..., description="The party receiving the license")
     start_date: str = Field(..., description="The start date of the license agreement")
     end_date: str = Field(..., description="The end date of the license agreement")
     auto_renews: bool = Field(..., description="Whether the license automatically renews after the end date")
