@@ -140,8 +140,7 @@ def main():
         group.add_argument("--list", action="store_true", help="List all available models")
         group.add_argument("--model", type=str, help="Specify the model to use")
         group.add_argument("--auto", action="store_true", help="Automatically select the most appropriate model")
-        parser.add_argument("--pdf", type=str, default="software_license.pdf", 
-                           help="Path to the PDF file (default: software_license.pdf)")
+        parser.add_argument("--pdf", type=str, help="Path to the PDF file")
         parser.add_argument("--crawl-dir", type=str,
                            help="Recursively process all PDF files in the specified directory")
         parser.add_argument("--parallel", type=int, default=0, metavar="N",
