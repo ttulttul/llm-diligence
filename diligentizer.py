@@ -12,6 +12,7 @@ load_dotenv()
 # Import from the analysis module
 from analysis import get_available_models, list_available_models, run_analysis
 from utils import logger, configure_logger
+from utils.crawler import process_directory
 
 
 def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class):
@@ -242,56 +243,15 @@ def main():
                 
         # Process a directory of files
         elif args.crawl_dir:
-            # Get all PDF files in the directory and subdirectories
-            crawl_path = Path(args.crawl_dir)
-            if not crawl_path.exists() or not crawl_path.is_dir():
-                logger.error(f"Directory not found: {args.crawl_dir}")
-                return 1
-                
-            pdf_files = list(crawl_path.glob('**/*.pdf'))
-            if not pdf_files:
-                logger.warning(f"No PDF files found in {args.crawl_dir}")
-                return 0
-                
-            logger.info(f"Found {len(pdf_files)} PDF files to process")
-            print(f"Processing {len(pdf_files)} PDF files from {args.crawl_dir}...")
-            
-            # Process each PDF file
-            for pdf_path in pdf_files:
-                relative_path = pdf_path.relative_to(crawl_path)
-                print(f"\nProcessing: {relative_path}")
-                logger.info(f"Processing file: {pdf_path}")
-                
-                try:
-                    # Run analysis on this file
-                    result = run_analysis(model_class, str(pdf_path), args.sqlite)
-                    
-                    # Save result as JSON if requested
-                    if json_output_dir and result:
-                        # Create subdirectories in the output dir to match the input structure
-                        if len(relative_path.parts) > 1:
-                            output_subdir = json_output_dir / Path(*relative_path.parts[:-1])
-                            output_subdir.mkdir(parents=True, exist_ok=True)
-                        else:
-                            output_subdir = json_output_dir
-                            
-                        # Use the filename as part of the output filename
-                        output_filename = f"{relative_path.stem}_{selected_model}.json"
-                        output_path = output_subdir / output_filename
-                        
-                        try:
-                            with open(output_path, 'w') as f:
-                                # Use the ModelEncoder to handle datetime objects
-                                from models import ModelEncoder
-                                json.dump(result.model_dump(), f, cls=ModelEncoder, indent=2)
-                            print(f"JSON output saved to: {output_path}")
-                            logger.info(f"JSON output saved to: {output_path}")
-                        except Exception as e:
-                            logger.error(f"Failed to save JSON output for {pdf_path}: {e}")
-                            print(f"Error saving JSON output: {e}")
-                except Exception as e:
-                    logger.error(f"Failed to process {pdf_path}: {e}")
-                    print(f"Error processing {pdf_path}: {e}")
+            return_code = process_directory(
+                args.crawl_dir,
+                model_class,
+                selected_model,
+                json_output_dir,
+                args.sqlite
+            )
+            if return_code != 0:
+                return return_code
         else:
             # Process a single file
             result = run_analysis(model_class, args.pdf, args.sqlite)
