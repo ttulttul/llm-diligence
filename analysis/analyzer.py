@@ -57,9 +57,9 @@ def _run_auto(pdf_path: str,
         else:
             # Recurse: Run the analysis using the model that was
             # selected by AutoModel. This is the default case.
-            logger.info(f"AutoModel selected: {selected_model_name}")
-
             selected_model_name = auto_model.chosen_model_name
+            logger.info(f"AutoModel selected: {selected_model_name}")
+            
             selected_model_class = models_dict[selected_model_name]
             return run_analysis(selected_model_class, pdf_path, db_path)
 
