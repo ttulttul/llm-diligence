@@ -134,6 +134,10 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
                     {"type": "text", "text": text_to_analyze}
                 ]
                 
+                # Add extra prompt text if provided
+                if args.prompt_extra:
+                    message_content.append({"type": "text", "text": args.prompt_extra})
+                
                 response = cached_llm_invoke(
                     system_message=system_message,
                     user_content=message_content,
@@ -175,6 +179,9 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
 
 def main():
     """Main entry point with command line argument parsing."""
+    # Store prompt_extra in a global variable to make it accessible to all functions
+    global prompt_extra
+    prompt_extra = None
     try:
         parser = argparse.ArgumentParser(description="Diligentizer - Extract structured data from documents")
         group = parser.add_mutually_exclusive_group()
@@ -201,6 +208,8 @@ def main():
                            help="Set the logging level (default: WARNING)")
         parser.add_argument("--log-file", type=str, help="Path to the log file")
         parser.add_argument("--verbose", action="store_true", help="Be verbose about everything")
+        parser.add_argument("--prompt-extra", type=str, 
+                           help="Additional text to append to every LLM prompt")
         
         args = parser.parse_args()
 
@@ -334,7 +343,8 @@ def main():
                 json_output_dir,
                 args.sqlite,
                 args.parallel,
-                classify_only
+                classify_only,
+                prompt_extra=args.prompt_extra
             )
         else:
             # Process a single file
@@ -347,7 +357,7 @@ def main():
             def single_pdf_generator():
                 try:
                     pdf_path = Path(args.pdf)
-                    result = run_analysis(model_class, args.pdf, None, classify_only)
+                    result = run_analysis(model_class, args.pdf, None, classify_only, prompt_extra=args.prompt_extra)
                     yield (True, str(pdf_path), result, None)
                 except Exception as e:
                     logger.error(f"Failed to process {args.pdf}: {e}")
