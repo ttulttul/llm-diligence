@@ -407,6 +407,11 @@ def main():
                 # Write classification result to CSV if requested
                 if args.classify_only and csv_writer and hasattr(result, 'model_name'):
                     csv_writer.writerow([file_path, result.model_name])
+                # If this is an AutoModel result with a selection path, log it
+                elif hasattr(result, 'selection_path') and result.selection_path:
+                    path_str = " -> ".join(result.selection_path)
+                    logger.info(f"Model selection path: {path_str}")
+                    print(f"Model selection path: {path_str}")
             else:
                 logger.info(f"result: FAILURE {file_path} -> exception={exception}")
                 failure_count += 1
