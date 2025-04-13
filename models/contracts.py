@@ -1,7 +1,7 @@
 from pydantic import Field, field_validator, BaseModel
 from typing import List, Optional
 from datetime import date
-from .base import DiligentizerModel
+from .base import DiligentizerModel, Agreement
 import re
 
 class Salary(BaseModel):
@@ -35,7 +35,7 @@ class RestrictiveCovenants(BaseModel):
     confidentiality_clause_present: Optional[bool] = Field(None, description="Indicates if a confidentiality clause or agreement is referenced/included.")
     intellectual_property_assignment: Optional[bool] = Field(None, description="Indicates if there's a clause assigning IP created during employment to the employer.")
 
-class EmploymentContract(DiligentizerModel):
+class EmploymentContract(Agreement):
     """Represents key details extracted from an employment agreement."""
     employer: str = Field(..., description="The employer's legal name.")
     employee: str = Field(..., description="The employee's full name.")
@@ -46,6 +46,9 @@ class EmploymentContract(DiligentizerModel):
     original_start_date: Optional[date] = Field(None, description="The employee's original start date with the employer, if different from the agreement date (relevant for continuous service).") 
     # Use effective_start_date for when *this specific contract* term begins
     effective_start_date: Optional[date] = Field(None, description="Employment start date under *this* specific agreement, if specified.")
+    
+    # Override parties from Agreement base class
+    parties: List[str] = Field(default_factory=list, description="The parties involved in the agreement (employer and employee)")
 
     salary: Salary = Field(..., description="Details about the employee's salary.")
     

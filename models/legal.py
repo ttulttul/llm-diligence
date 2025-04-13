@@ -140,7 +140,7 @@ class AssignmentProvisionType(str, Enum):
     UNRESTRICTED = "unrestricted assignment"
     ACQUIRER_SPECIFIC = "specific acquirer restrictions"
 
-class SoftwareLicenseAgreement(DiligentizerModel):
+class SoftwareLicenseAgreement(Agreement):
     # Parties and basic term information
     licensor: str = Field(..., description="The party granting the license")
     licensee: str = Field(..., description="The party receiving the license")

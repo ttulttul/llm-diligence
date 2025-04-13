@@ -4,7 +4,7 @@ from datetime import date, datetime
 from enum import Enum
 from uuid import UUID
 import re
-from .base import DiligentizerModel
+from .base import DiligentizerModel, DueDiligenceDocument, Agreement, FinancialDocument
 
 
 # Common Enums and Base Models
@@ -42,7 +42,7 @@ class DocumentMetadata(BaseModel):
 # 1. BUSINESS DUE DILIGENCE MODELS
 # ------------------------------------------------------------------------------
 
-class CompanyOverview(DiligentizerModel):
+class CompanyOverview(DueDiligenceDocument):
     """Company overview presentation document"""
     metadata: DocumentMetadata
     year_founded: int = Field(..., description="Year the company was founded")
@@ -57,7 +57,7 @@ class CompanyOverview(DiligentizerModel):
     product_portfolio: List[str] = Field(..., description="List of products and services")
 
 
-class IncomeStatement(DiligentizerModel):
+class IncomeStatement(FinancialDocument):
     """Historical income statement document"""
     metadata: DocumentMetadata
     fiscal_year: int = Field(..., description="Fiscal year of statement")
@@ -78,7 +78,7 @@ class IncomeStatement(DiligentizerModel):
     accounting_standard: str = Field(..., description="Accounting standard used (GAAP, IFRS)")
 
 
-class EmployeeCensus(DiligentizerModel):
+class EmployeeCensus(DueDiligenceDocument):
     """Employee roster document"""
     metadata: DocumentMetadata
     as_of_date: date = Field(..., description="Census data collection date")
@@ -108,7 +108,7 @@ class EmployeeCensus(DiligentizerModel):
     }
 
 
-class CustomerContract(DiligentizerModel):
+class CustomerContract(Agreement):
     """Customer agreement document"""
     metadata: DocumentMetadata
     customer_name: str = Field(..., description="Name of customer")
@@ -126,7 +126,7 @@ class CustomerContract(DiligentizerModel):
     non_standard_terms: Optional[List[str]] = Field(None, description="Any non-standard terms")
 
 
-class SalesBookingData(DiligentizerModel):
+class SalesBookingData(DueDiligenceDocument):
     """Sales booking record document"""
     metadata: DocumentMetadata
     time_period: str = Field(..., description="Time period of data (Q1 2023, etc.)")
@@ -139,7 +139,7 @@ class SalesBookingData(DiligentizerModel):
     win_rate: float = Field(..., description="Percentage of opportunities won")
 
 
-class PricingBook(DiligentizerModel):
+class PricingBook(DueDiligenceDocument):
     """Product pricing documentation"""
     metadata: DocumentMetadata
     effective_date: date = Field(..., description="Effective date of pricing")
@@ -175,7 +175,7 @@ class PricingBook(DiligentizerModel):
 # 2. ACCOUNTING DUE DILIGENCE MODELS
 # ------------------------------------------------------------------------------
 
-class FinancialStatementDD(DiligentizerModel):
+class FinancialStatementDD(FinancialDocument):
     """Formal financial statement document"""
     metadata: DocumentMetadata
     statement_type: str = Field(..., description="Income statement, balance sheet, cash flow")
@@ -191,7 +191,7 @@ class FinancialStatementDD(DiligentizerModel):
     auditor: Optional[str] = Field(None, description="Auditing firm if applicable")
 
 
-class AccountsReceivableAging(DiligentizerModel):
+class AccountsReceivableAging(FinancialDocument):
     """AR aging report document"""
     metadata: DocumentMetadata
     as_of_date: date = Field(..., description="Report date")
@@ -215,7 +215,7 @@ class AccountsReceivableAging(DiligentizerModel):
     }
 
 
-class DeferredRevenueSchedule(DiligentizerModel):
+class DeferredRevenueSchedule(FinancialDocument):
     """Deferred revenue calculation document"""
     metadata: DocumentMetadata
     as_of_date: date = Field(..., description="Schedule date")
@@ -230,7 +230,7 @@ class DeferredRevenueSchedule(DiligentizerModel):
 # 3. TAX DUE DILIGENCE MODELS
 # ------------------------------------------------------------------------------
 
-class TaxReturn(DiligentizerModel):
+class TaxReturn(FinancialDocument):
     """Tax return document"""
     metadata: DocumentMetadata
     tax_year: int = Field(..., description="Tax year")
@@ -247,7 +247,7 @@ class TaxReturn(DiligentizerModel):
     under_audit: bool = Field(False, description="Whether under audit")
 
 
-class TaxContingencyDocument(DiligentizerModel):
+class TaxContingencyDocument(FinancialDocument):
     """Tax contingency disclosure document"""
     metadata: DocumentMetadata
     contingency_type: str = Field(..., description="Type of tax contingency")
@@ -264,7 +264,7 @@ class TaxContingencyDocument(DiligentizerModel):
 # 4. SAAS DUE DILIGENCE MODELS
 # ------------------------------------------------------------------------------
 
-class ServiceLevelAgreement(DiligentizerModel):
+class ServiceLevelAgreement(Agreement):
     """SLA document"""
     metadata: DocumentMetadata
     service_covered: str = Field(..., description="Service covered by SLA")
@@ -277,7 +277,7 @@ class ServiceLevelAgreement(DiligentizerModel):
     reporting_frequency: str = Field(..., description="How often SLA metrics are reported")
 
 
-class DisasterRecoveryPlan(DiligentizerModel):
+class DisasterRecoveryPlan(DueDiligenceDocument):
     """DR plan document"""
     metadata: DocumentMetadata
     last_updated: date = Field(..., description="Last plan update date")
@@ -293,7 +293,7 @@ class DisasterRecoveryPlan(DiligentizerModel):
     last_test_results: str = Field(..., description="Results of last test")
 
 
-class SecurityComplianceDocument(DiligentizerModel):
+class SecurityComplianceDocument(DueDiligenceDocument):
     """Security and compliance documentation"""
     metadata: DocumentMetadata
     compliance_frameworks: List[str] = Field(..., description="Relevant frameworks (SOC2, ISO27001, etc.)")
@@ -307,7 +307,7 @@ class SecurityComplianceDocument(DiligentizerModel):
     security_incidents: Optional[List[Dict[str, Any]]] = Field(None, description="Recent security incidents")
 
 
-class ApplicationArchitecture(DiligentizerModel):
+class ApplicationArchitecture(DueDiligenceDocument):
     """Application architecture document"""
     metadata: DocumentMetadata
     application_name: str = Field(..., description="Application name")
@@ -325,7 +325,7 @@ class ApplicationArchitecture(DiligentizerModel):
 # 5. TECH DUE DILIGENCE MODELS
 # ------------------------------------------------------------------------------
 
-class NetworkArchitecture(DiligentizerModel):
+class NetworkArchitecture(DueDiligenceDocument):
     """Network architecture document"""
     metadata: DocumentMetadata
     network_topology: str = Field(..., description="Network topology description")
@@ -338,7 +338,7 @@ class NetworkArchitecture(DiligentizerModel):
     diagram_references: Optional[List[str]] = Field(None, description="References to network diagrams")
 
 
-class InternalApplicationInventory(DiligentizerModel):
+class InternalApplicationInventory(DueDiligenceDocument):
     """Internal application inventory document"""
     metadata: DocumentMetadata
     as_of_date: date = Field(..., description="Inventory date")
@@ -366,7 +366,7 @@ class InternalApplicationInventory(DiligentizerModel):
     }
 
 
-class HelpdeskMetrics(DiligentizerModel):
+class HelpdeskMetrics(DueDiligenceDocument):
     """Helpdesk performance metrics document"""
     metadata: DocumentMetadata
     time_period: str = Field(..., description="Reporting period")
@@ -384,7 +384,7 @@ class HelpdeskMetrics(DiligentizerModel):
 # 6. LEGAL DUE DILIGENCE MODELS
 # ------------------------------------------------------------------------------
 
-class CorporateStructure(DiligentizerModel):
+class CorporateStructure(DueDiligenceDocument):
     """Corporate structure document"""
     metadata: DocumentMetadata
     parent_entity: Dict[str, Any] = Field(..., description="Parent company details")
@@ -395,7 +395,7 @@ class CorporateStructure(DiligentizerModel):
     organizational_chart_reference: Optional[str] = Field(None, description="Reference to org chart")
 
 
-class IntellectualPropertyInventory(DiligentizerModel):
+class IntellectualPropertyInventory(DueDiligenceDocument):
     """IP inventory document"""
     metadata: DocumentMetadata
     patents: List[Dict[str, Any]] = Field(..., description="Patent details")
@@ -427,7 +427,7 @@ class IntellectualPropertyInventory(DiligentizerModel):
     }
 
 
-class MaterialContractSummary(DiligentizerModel):
+class MaterialContractSummary(Agreement):
     """Material contract summary document"""
     metadata: DocumentMetadata
     contract_type: str = Field(..., description="Loan, lease, partnership, etc.")
@@ -443,7 +443,7 @@ class MaterialContractSummary(DiligentizerModel):
     notable_restrictions: Optional[List[str]] = Field(None, description="Notable restrictions")
 
 
-class EmploymentAgreement(DiligentizerModel):
+class EmploymentAgreement(Agreement):
     """Employment agreement document"""
     metadata: DocumentMetadata
     employee_name: str = Field(..., description="Employee name")

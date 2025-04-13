@@ -1,10 +1,8 @@
 from pydantic import Field
 from typing import List, Optional
-from .base import DiligentizerModel
+from .base import DiligentizerModel, FinancialDocument
 
-class FinancialStatement(DiligentizerModel):
-    company_name: str = Field(..., description="Name of the company")
-    fiscal_year: str = Field(..., description="Fiscal year of the statement")
+class FinancialStatement(FinancialDocument):
     revenue: float = Field(..., description="Total revenue for the period")
     expenses: float = Field(..., description="Total expenses for the period")
     net_income: float = Field(..., description="Net income for the period")

@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import Field
-from .base import DiligentizerModel
+from .base import DiligentizerModel, Agreement
 from .legal import (
     WarrantyType,
     LiabilityLimit,
@@ -49,7 +49,7 @@ class DataProcessingScope(str, Enum):
     AS_PERMITTED_BY_CUSTOMER = "as otherwise explicitly permitted by the customer"
     LIMITED_SUPPORT = "as necessary for providing technical support requested by customer"
 
-class IaasCustomerAgreement(DiligentizerModel):
+class IaasCustomerAgreement(Agreement):
     """
     Represents the key concepts extracted from a generic Infrastructure as a Service (IaaS) Customer Agreement.
     Aims to be provider-agnostic (e.g., applicable to AWS, Azure, GCP, etc.).
