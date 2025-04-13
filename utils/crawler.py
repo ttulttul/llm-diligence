@@ -20,14 +20,14 @@ def process_file(args: Tuple) -> Tuple[bool, str, Optional[Exception]]:
     Returns:
         Tuple of (success, file_path, exception)
     """
-    pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, auto_enabled = args
+    pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only = args
     
     try:
         # Calculate relative path for output
         relative_path = pdf_path.relative_to(crawl_path)
         
         # Run analysis on this file
-        result = run_analysis(model_class, str(pdf_path), sqlite_path, auto_enabled)
+        result = run_analysis(model_class, str(pdf_path), sqlite_path, classify_only)
         
         # Save result as JSON if requested
         if json_output_dir and result:
@@ -63,7 +63,7 @@ def process_directory(
     json_output_dir: Optional[Path] = None,
     sqlite_path: Optional[str] = None,
     parallel: int = 0,
-    auto_enabled: bool = False
+    classify_only: bool = False
 ) -> int:
     """
     Recursively process all PDF files in the specified directory.
@@ -75,7 +75,7 @@ def process_directory(
         json_output_dir: Optional directory to save JSON output
         sqlite_path: Optional path to SQLite database
         parallel: Number of parallel processes to run
-        auto_enabled: Will be passed to run_analysis()
+        classify_only: Will be passed to run_analysis()
         
     Returns:
         int: 0 for success, 1 for failure
@@ -101,7 +101,7 @@ def process_directory(
         
         # Prepare arguments for each file
         process_args = [
-            (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, auto_enabled)
+            (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only)
             for pdf_path in pdf_files
         ]
         
@@ -133,7 +133,7 @@ def process_directory(
             print(f"\nProcessing ({i+1}/{len(pdf_files)}): {relative_path}")
             logger.info(f"Processing file: {pdf_path}")
             
-            success, _, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, auto_enabled))
+            success, _, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only))
             
             if success:
                 print(f"Successfully processed: {relative_path}")
