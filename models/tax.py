@@ -218,6 +218,67 @@ class TaxRuling(TaxDocument):
     reliance_limitations: Optional[List[str]] = Field(None, description="Limitations on reliance on the ruling")
     related_transactions: Optional[List[str]] = Field(None, description="Transactions to which the ruling applies")
 
+class TaxAuditStatus(str, Enum):
+    """Status of a tax audit"""
+    NOT_STARTED = "not started"
+    INITIAL_CONTACT = "initial contact"
+    INFORMATION_GATHERING = "information gathering"
+    FIELD_WORK = "field work in progress"
+    ISSUES_IDENTIFIED = "issues identified"
+    PROPOSED_ADJUSTMENTS = "proposed adjustments issued"
+    RESPONSE_SUBMITTED = "response submitted"
+    NEGOTIATIONS = "negotiations in progress"
+    CLOSING_CONFERENCE = "closing conference"
+    FINAL_ASSESSMENT = "final assessment issued"
+    CLOSED_NO_CHANGE = "closed - no change"
+    CLOSED_WITH_ADJUSTMENTS = "closed - with adjustments"
+    APPEALED = "appealed"
+    LITIGATION = "litigation"
+
+class AuditScope(str, Enum):
+    """Scope of a tax audit"""
+    COMPREHENSIVE = "comprehensive audit"
+    LIMITED_SCOPE = "limited scope audit"
+    SPECIFIC_ISSUE = "specific issue audit"
+    COMPLIANCE_CHECK = "compliance check"
+    CORRESPONDENCE_AUDIT = "correspondence audit"
+    FIELD_AUDIT = "field audit"
+    OFFICE_AUDIT = "office audit"
+    RANDOM_AUDIT = "random audit"
+    TARGETED_AUDIT = "targeted audit"
+
+class AuditIssue(BaseModel):
+    """Represents a specific issue identified in a tax audit"""
+    issue_id: Optional[str] = Field(None, description="Identifier for the issue")
+    description: str = Field(..., description="Description of the issue")
+    tax_type: TaxType = Field(..., description="Type of tax related to the issue")
+    periods_affected: List[str] = Field(default_factory=list, description="Tax periods affected by the issue")
+    proposed_adjustment: Optional[float] = Field(None, description="Amount of proposed adjustment")
+    penalties_proposed: Optional[float] = Field(None, description="Amount of penalties proposed")
+    interest_proposed: Optional[float] = Field(None, description="Amount of interest proposed")
+    company_position: Optional[str] = Field(None, description="Company's position on the issue")
+    authority_position: Optional[str] = Field(None, description="Tax authority's position on the issue")
+    status: Optional[str] = Field(None, description="Current status of the issue")
+    resolution: Optional[str] = Field(None, description="How the issue was resolved, if applicable")
+    final_adjustment: Optional[float] = Field(None, description="Final adjustment amount, if resolved")
+    supporting_documentation: Optional[List[str]] = Field(None, description="Documentation supporting the company's position")
+    risk_assessment: Optional[str] = Field(None, description="Assessment of risk related to the issue")
+    technical_merits: Optional[str] = Field(None, description="Technical merits of the company's position")
+
+class InformationRequest(BaseModel):
+    """Represents an information request during a tax audit"""
+    request_id: Optional[str] = Field(None, description="Identifier for the request")
+    request_date: date = Field(..., description="Date the request was issued")
+    response_due_date: date = Field(..., description="Date by which response is due")
+    extended_due_date: Optional[date] = Field(None, description="Extended due date if applicable")
+    items_requested: List[str] = Field(..., description="Items requested by the auditor")
+    response_status: Optional[str] = Field(None, description="Status of the response")
+    response_date: Optional[date] = Field(None, description="Date the response was submitted")
+    items_provided: Optional[List[str]] = Field(None, description="Items provided in the response")
+    items_not_provided: Optional[List[str]] = Field(None, description="Items not provided and reasons")
+    follow_up_requests: Optional[List[str]] = Field(None, description="Follow-up requests from the auditor")
+    notes: Optional[str] = Field(None, description="Additional notes about the request")
+
 class TaxAudit(TaxDocument):
     """Document related to a tax audit or examination"""
     audit_id: Optional[str] = Field(None, description="Identification number of the audit")
@@ -225,16 +286,36 @@ class TaxAudit(TaxDocument):
     tax_types: List[TaxType] = Field(default_factory=list, description="Types of taxes being audited")
     periods_under_audit: Optional[List[str]] = Field(None, description="Tax periods under audit")
     audit_start_date: Optional[date] = Field(None, description="Date the audit began")
-    audit_status: Optional[str] = Field(None, description="Current status of the audit")
+    audit_status: Optional[TaxAuditStatus] = Field(None, description="Current status of the audit")
+    audit_scope: Optional[AuditScope] = Field(None, description="Scope of the audit")
+    audit_trigger: Optional[str] = Field(None, description="What triggered the audit, if known")
     initial_information_request_date: Optional[date] = Field(None, description="Date of initial information request")
     information_provided: Optional[bool] = Field(None, description="Whether requested information has been provided")
+    information_requests: Optional[List[InformationRequest]] = Field(None, description="Detailed information requests")
     issues_identified: Optional[List[str]] = Field(None, description="Issues identified by the auditor")
+    detailed_issues: Optional[List[AuditIssue]] = Field(None, description="Detailed audit issues")
     proposed_adjustments: Optional[Dict[str, float]] = Field(None, description="Proposed tax adjustments by issue")
+    total_proposed_adjustment: Optional[float] = Field(None, description="Total amount of proposed adjustments")
+    total_proposed_penalties: Optional[float] = Field(None, description="Total amount of proposed penalties")
+    total_proposed_interest: Optional[float] = Field(None, description="Total amount of proposed interest")
     company_responses: Optional[Dict[str, str]] = Field(None, description="Company's responses to identified issues")
     expected_completion_date: Optional[date] = Field(None, description="Expected completion date of the audit")
+    actual_completion_date: Optional[date] = Field(None, description="Actual completion date of the audit")
     potential_exposure: Optional[float] = Field(None, description="Estimated potential financial exposure")
+    final_assessment_amount: Optional[float] = Field(None, description="Final assessment amount")
+    amount_paid: Optional[float] = Field(None, description="Amount paid as a result of the audit")
     audit_representatives: Optional[List[str]] = Field(None, description="Company representatives for the audit")
     external_advisors: Optional[List[str]] = Field(None, description="External advisors assisting with the audit")
+    lead_auditor: Optional[str] = Field(None, description="Lead auditor from the tax authority")
+    audit_meetings: Optional[List[Dict[str, Any]]] = Field(None, description="Key meetings during the audit")
+    statute_of_limitations: Optional[date] = Field(None, description="Statute of limitations expiration date")
+    extensions_filed: Optional[List[Dict[str, Any]]] = Field(None, description="Extensions to statute of limitations")
+    closing_agreement: Optional[bool] = Field(None, description="Whether a closing agreement was executed")
+    closing_agreement_terms: Optional[str] = Field(None, description="Terms of any closing agreement")
+    appeal_filed: Optional[bool] = Field(None, description="Whether an appeal was filed")
+    appeal_status: Optional[str] = Field(None, description="Status of any appeal")
+    lessons_learned: Optional[List[str]] = Field(None, description="Lessons learned from the audit")
+    process_improvements: Optional[List[str]] = Field(None, description="Process improvements identified")
 
 class TaxPlanningDocument(TaxDocument):
     """Tax planning document or strategy"""
@@ -293,6 +374,54 @@ class TransferPricingDocument(TaxDocument):
     local_filing_requirements_met: Optional[bool] = Field(None, description="Whether documentation meets local requirements")
     apa_in_place: Optional[bool] = Field(None, description="Whether an Advance Pricing Agreement is in place")
     apa_terms: Optional[str] = Field(None, description="Terms of any Advance Pricing Agreement")
+
+class AuditCycle(BaseModel):
+    """Represents a tax audit cycle for a specific jurisdiction and period"""
+    jurisdiction: str = Field(..., description="Tax jurisdiction")
+    tax_years: List[str] = Field(..., description="Tax years covered in this audit cycle")
+    cycle_status: Optional[TaxAuditStatus] = Field(None, description="Status of this audit cycle")
+    primary_audits: Optional[List[str]] = Field(None, description="References to primary audit documents")
+    cycle_start_date: Optional[date] = Field(None, description="Start date of the audit cycle")
+    cycle_end_date: Optional[date] = Field(None, description="End date of the audit cycle")
+    cycle_manager: Optional[str] = Field(None, description="Person managing this audit cycle")
+    total_adjustments: Optional[float] = Field(None, description="Total adjustments across all audits in cycle")
+    total_exposure: Optional[float] = Field(None, description="Total exposure across all audits in cycle")
+    key_issues: Optional[List[str]] = Field(None, description="Key issues across all audits in cycle")
+    notes: Optional[str] = Field(None, description="Notes about this audit cycle")
+
+class AuditHistory(TaxDocument):
+    """Document tracking the history of tax audits for an entity"""
+    entity_name: str = Field(..., description="Name of the entity")
+    tax_id: Optional[str] = Field(None, description="Tax ID of the entity")
+    audit_cycles: List[AuditCycle] = Field(default_factory=list, description="History of audit cycles")
+    open_audits: Optional[List[str]] = Field(None, description="References to currently open audits")
+    closed_audits: Optional[List[str]] = Field(None, description="References to closed audits")
+    audit_frequency: Optional[str] = Field(None, description="Observed frequency of audits")
+    high_risk_areas: Optional[List[str]] = Field(None, description="Areas frequently targeted in audits")
+    total_historical_adjustments: Optional[Dict[str, float]] = Field(None, description="Total historical adjustments by jurisdiction")
+    audit_defense_strategy: Optional[str] = Field(None, description="Overall strategy for audit defense")
+    recurring_issues: Optional[List[str]] = Field(None, description="Issues that recur across multiple audits")
+    successful_defense_strategies: Optional[List[str]] = Field(None, description="Strategies that have been successful in past audits")
+    relationship_notes: Optional[Dict[str, str]] = Field(None, description="Notes on relationships with tax authorities")
+
+class AuditWorkpaper(TaxDocument):
+    """Represents a workpaper prepared during a tax audit"""
+    workpaper_id: str = Field(..., description="Identifier for the workpaper")
+    related_audit_id: str = Field(..., description="ID of the related audit")
+    prepared_by: str = Field(..., description="Person who prepared the workpaper")
+    preparation_date: date = Field(..., description="Date the workpaper was prepared")
+    reviewed_by: Optional[str] = Field(None, description="Person who reviewed the workpaper")
+    review_date: Optional[date] = Field(None, description="Date the workpaper was reviewed")
+    workpaper_type: str = Field(..., description="Type of workpaper")
+    tax_issue: str = Field(..., description="Tax issue addressed in the workpaper")
+    tax_periods: List[str] = Field(..., description="Tax periods covered")
+    conclusion: str = Field(..., description="Conclusion reached in the workpaper")
+    supporting_documents: Optional[List[str]] = Field(None, description="Supporting documents referenced")
+    calculations: Optional[Dict[str, Any]] = Field(None, description="Key calculations in the workpaper")
+    assumptions: Optional[List[str]] = Field(None, description="Key assumptions made")
+    risks_identified: Optional[List[str]] = Field(None, description="Risks identified in the analysis")
+    follow_up_items: Optional[List[str]] = Field(None, description="Items requiring follow-up")
+    notes: Optional[str] = Field(None, description="Additional notes")
 
 class TaxProvisionDocument(TaxDocument, FinancialDocument):
     """Tax provision or accrual documentation"""
