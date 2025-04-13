@@ -50,6 +50,8 @@ def save_to_db(db_path, response):
             json_safe_response = type(response).model_validate(json_compatible_data)
         
             sa_instance = save_model_to_db(json_safe_response, sa_models, session)
+            # Explicitly commit the transaction
+            session.commit()
             logger.info(f"Saved to database: {db_path}, table: {sa_instance.__tablename__}, ID: {sa_instance.id}")
     except Exception as e:
         logger.error(f"Error saving to database: {e}", exc_info=True)
