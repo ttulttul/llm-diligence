@@ -15,15 +15,30 @@ from utils import logger, configure_logger
 from utils.crawler import process_directory
 from utils.db import setup_database, save_model_to_db
 
+# Cache for database setup
+_db_cache = {}
+
 def save_to_db(db_path, response): 
     logger.info(f"Attempting to save response to database at {db_path}: {response}")
-    try:
-        # Set up the database with all available models
-        models_dict = get_available_models()
-        model_classes = list(models_dict.values())
-        engine, Session, sa_models = setup_database(db_path, model_classes)
-    except Exception as e:
-        logger.error(f"Error setting up database: {e}", exc_info=True)
+    
+    # Check if we've already set up this database
+    if db_path not in _db_cache:
+        try:
+            # Set up the database with all available models
+            logger.info(f"Setting up database for the first time: {db_path}")
+            models_dict = get_available_models()
+            model_classes = list(models_dict.values())
+            engine, Session, sa_models = setup_database(db_path, model_classes)
+            
+            # Cache the setup
+            _db_cache[db_path] = (engine, Session, sa_models)
+        except Exception as e:
+            logger.error(f"Error setting up database: {e}", exc_info=True)
+            return
+    else:
+        # Use cached setup
+        logger.debug(f"Using cached database setup for: {db_path}")
+        engine, Session, sa_models = _db_cache[db_path]
    
     try:
         # Create a session and save the model
