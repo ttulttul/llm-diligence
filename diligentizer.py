@@ -182,6 +182,7 @@ def main():
         group.add_argument("--model", type=str, help="Specify the model to use")
         group.add_argument("--auto", action="store_true", help="Automatically select the most appropriate model")
         parser.add_argument("--classify-only", action="store_true", help="Return the auto-selected model rather than applying that model to the document. This is useful for pre-classification. (default: False)", default=False)
+        parser.add_argument("--classify-to-csv", type=str, help="Path to CSV file to save classification results when using --classify-only")
         parser.add_argument("--pdf", type=str, help="Path to the PDF file")
         parser.add_argument("--crawl-dir", type=str,
                            help="Recursively process all PDF files in the specified directory")
@@ -292,6 +293,12 @@ def main():
             logger.error("No input source specified (PDF, directory, or CSV)")
             return 1
             
+        # Validate that --classify-to-csv is only used with --classify-only
+        if args.classify_to_csv and not args.classify_only:
+            print("Error: --classify-to-csv can only be used with --classify-only")
+            logger.error("--classify-to-csv used without --classify-only")
+            return 1
+            
         # Process a CSV file if specified
         if args.csv_input:
             if not args.csv_input_column:
@@ -352,6 +359,26 @@ def main():
         success_count = 0
         failure_count = 0
         
+        # Set up CSV output for classification results if requested
+        csv_file = None
+        csv_writer = None
+        if args.classify_only and args.classify_to_csv:
+            import csv
+            try:
+                csv_file = open(args.classify_to_csv, 'w', newline='')
+                csv_writer = csv.writer(csv_file)
+                # Write header row
+                csv_writer.writerow(['file_path', 'model_name'])
+                logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
+                print(f"Classification results will be saved to: {args.classify_to_csv}")
+            except Exception as e:
+                logger.error(f"Failed to create CSV file: {e}")
+                print(f"Error creating CSV file: {e}")
+                if csv_file:
+                    csv_file.close()
+                csv_file = None
+                csv_writer = None
+        
         for success, file_path, result, exception in results_generator:
             if success:
                 logger.info(f"result: SUCCESS {file_path} -> {result}")
@@ -376,6 +403,10 @@ def main():
                 if args.sqlite and result:
                     logger.info(f"Saving to db: {result}")
                     save_to_db(args.sqlite, result)
+                
+                # Write classification result to CSV if requested
+                if args.classify_only and csv_writer and hasattr(result, 'model_name'):
+                    csv_writer.writerow([file_path, result.model_name])
             else:
                 logger.info(f"result: FAILURE {file_path} -> exception={exception}")
                 failure_count += 1
@@ -385,6 +416,11 @@ def main():
             total = success_count + failure_count
             print(f"\nCompleted processing {total} files.")
             print(f"Success: {success_count}, Failures: {failure_count}")
+        
+        # Close CSV file if it was opened
+        if csv_file:
+            csv_file.close()
+            logger.info(f"Classification CSV file closed: {args.classify_to_csv}")
         
         return 0
     except KeyboardInterrupt:
