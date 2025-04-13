@@ -233,6 +233,12 @@ def main():
                 logger.error(f"PDF file is not readable: {args.pdf}")
                 return 1
         
+        # Validate that we have a source to process (PDF, directory, or CSV)
+        if not (args.pdf or args.crawl_dir or args.csv_input):
+            print("Error: You must specify either --pdf, --crawl-dir, or --csv-input")
+            logger.error("No input source specified (PDF, directory, or CSV)")
+            return 1
+            
         # Process a CSV file if specified
         if args.csv_input:
             if not args.csv_input_column:
@@ -272,6 +278,11 @@ def main():
                 return return_code
         else:
             # Process a single file
+            if not args.pdf:
+                print("Error: --pdf is required when not using --crawl-dir or --csv-input")
+                logger.error("No PDF file specified")
+                return 1
+                
             result = run_analysis(model_class, args.pdf, args.sqlite)
             
             # Save result as JSON if requested
