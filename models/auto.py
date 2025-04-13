@@ -18,6 +18,7 @@ class AutoModel(DiligentizerModel):
     """Automatically selects the most appropriate model to analyze the document."""
     
     chosen_model_name: str = Field(..., description="The name of the model chosen by the LLM")
+    chosen_model_description: str = Field("", description="The description of the chosen model")
     chosen_model_result: Any = Field(None, description="The result from the chosen model")
     
     @classmethod
@@ -102,7 +103,11 @@ Respond with only the exact model name (one of the keys from the available model
         # Now use the selected model to analyze the document
         # (model_class is already set in the validation step above)
         
+        # Get the description of the chosen model
+        chosen_model_description = model_class.__doc__ or "No description available"
+        
         return cls(
             chosen_model_name=chosen_model_name,
+            chosen_model_description=chosen_model_description,
             chosen_model_result=None  # Will be populated by the caller
         )
