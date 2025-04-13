@@ -300,9 +300,10 @@ def main():
             if not success:
                 return 1
                 
-        # Process a directory of files
-        elif args.crawl_dir:
-            return_code = process_directory(
+        # Process a directory of files or a single file
+        if args.crawl_dir:
+            # Use the crawler to process a directory
+            results_generator = process_directory(
                 args.crawl_dir,
                 model_class,
                 selected_model,
@@ -311,34 +312,59 @@ def main():
                 args.parallel,
                 classify_only
             )
-            if return_code != 0:
-                return return_code
         else:
             # Process a single file
             if not args.pdf:
                 print("Error: --pdf is required when not using --crawl-dir or --csv-input")
                 logger.error("No PDF file specified")
                 return 1
-                
-            result = run_analysis(model_class, args.pdf, args.sqlite, classify_only)
             
-            # Save result as JSON if requested
-            if json_output_dir and result:
-                output_path = json_output_dir / f"{Path(args.pdf).stem}_{selected_model}.json"
+            # Create a generator that yields a single result for the single PDF
+            def single_pdf_generator():
                 try:
-                    with open(output_path, 'w') as f:
-                        # Use the ModelEncoder to handle datetime objects
-                        from models import ModelEncoder
-                        json.dump(result.model_dump(), f, cls=ModelEncoder, indent=2)
-                    print(f"JSON output saved to: {output_path}")
-                    logger.info(f"JSON output saved to: {output_path}")
+                    pdf_path = Path(args.pdf)
+                    result = run_analysis(model_class, args.pdf, None, classify_only)
+                    yield (True, str(pdf_path), result, None)
                 except Exception as e:
-                    logger.error(f"Failed to save JSON output: {e}")
-                    print(f"Error saving JSON output: {e}")
-
-            # Save to db if requested
-            if args.sqlite:
-                save_to_db(args.sqlite, result)
+                    logger.error(f"Failed to process {args.pdf}: {e}")
+                    yield (False, str(pdf_path), None, e)
+            
+            results_generator = single_pdf_generator()
+        
+        # Process all results from the generator
+        success_count = 0
+        failure_count = 0
+        
+        for success, file_path, result, exception in results_generator:
+            if success:
+                success_count += 1
+                
+                # Save result as JSON if requested (only if not already done by process_directory)
+                if json_output_dir and result and not args.crawl_dir:
+                    pdf_path = Path(file_path)
+                    output_path = json_output_dir / f"{pdf_path.stem}_{selected_model}.json"
+                    try:
+                        with open(output_path, 'w') as f:
+                            # Use the ModelEncoder to handle datetime objects
+                            from models import ModelEncoder
+                            json.dump(result.model_dump(), f, cls=ModelEncoder, indent=2)
+                        print(f"JSON output saved to: {output_path}")
+                        logger.info(f"JSON output saved to: {output_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to save JSON output: {e}")
+                        print(f"Error saving JSON output: {e}")
+                
+                # Save to db if requested (only if not already done by process_directory)
+                if args.sqlite and result and not args.crawl_dir:
+                    save_to_db(args.sqlite, result)
+            else:
+                failure_count += 1
+        
+        # Print summary if processing multiple files
+        if args.crawl_dir:
+            total = success_count + failure_count
+            print(f"\nCompleted processing {total} files.")
+            print(f"Success: {success_count}, Failures: {failure_count}")
         
         return 0
     except KeyboardInterrupt:
