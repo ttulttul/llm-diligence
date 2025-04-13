@@ -1,0 +1,357 @@
+from enum import Enum
+from typing import Optional, List, Dict, Any
+from pydantic import Field, BaseModel
+from datetime import date, datetime
+from .base import DiligentizerModel, FinancialDocument
+
+class TaxJurisdiction(str, Enum):
+    """Types of tax jurisdictions"""
+    FEDERAL = "federal"
+    STATE = "state"
+    PROVINCIAL = "provincial"
+    LOCAL = "local"
+    INTERNATIONAL = "international"
+
+class TaxType(str, Enum):
+    """Common types of taxes"""
+    INCOME = "income tax"
+    SALES = "sales tax"
+    VAT = "value-added tax"
+    GST = "goods and services tax"
+    PAYROLL = "payroll tax"
+    PROPERTY = "property tax"
+    EXCISE = "excise tax"
+    CUSTOM_DUTY = "customs duty"
+    WITHHOLDING = "withholding tax"
+    CAPITAL_GAINS = "capital gains tax"
+    TRANSFER = "transfer tax"
+    FRANCHISE = "franchise tax"
+
+class TaxFilingStatus(str, Enum):
+    """Status of tax filings"""
+    FILED_ON_TIME = "filed on time"
+    FILED_EXTENSION = "filed with extension"
+    FILED_LATE = "filed late"
+    NOT_FILED = "not filed"
+    EXEMPT = "exempt from filing"
+    UNDER_AUDIT = "under audit"
+    CONTESTED = "contested"
+
+class TaxDisputeStatus(str, Enum):
+    """Status of tax disputes"""
+    NO_DISPUTE = "no dispute"
+    UNDER_REVIEW = "under internal review"
+    INFORMAL_NEGOTIATION = "informal negotiation with authority"
+    FORMAL_APPEAL = "formal administrative appeal"
+    LITIGATION = "litigation"
+    SETTLEMENT_NEGOTIATION = "settlement negotiation"
+    RESOLVED = "resolved"
+
+class TaxIncentiveType(str, Enum):
+    """Types of tax incentives"""
+    R_AND_D_CREDIT = "research and development credit"
+    INVESTMENT_CREDIT = "investment tax credit"
+    JOBS_CREDIT = "jobs/employment credit"
+    ENTERPRISE_ZONE = "enterprise/opportunity zone incentive"
+    ENERGY_CREDIT = "energy/sustainability credit"
+    FOREIGN_TAX_CREDIT = "foreign tax credit"
+    EMPOWERMENT_ZONE = "empowerment zone incentive"
+    ACCELERATED_DEPRECIATION = "accelerated depreciation"
+    EXPORT_INCENTIVE = "export incentive"
+    OTHER = "other tax incentive"
+
+class TaxDocument(DiligentizerModel):
+    """Base class for all tax-related documents"""
+    tax_year: Optional[str] = Field(None, description="The tax year(s) the document pertains to")
+    company_name: Optional[str] = Field(None, description="Name of the company or entity")
+    tax_id_number: Optional[str] = Field(None, description="Tax identification number (e.g., EIN, TIN)")
+    jurisdiction: Optional[TaxJurisdiction] = Field(None, description="The tax jurisdiction (federal, state, etc.)")
+    jurisdiction_name: Optional[str] = Field(None, description="Name of specific jurisdiction (e.g., 'California', 'Canada')")
+    document_date: Optional[date] = Field(None, description="Date the document was created or filed")
+    prepared_by: Optional[str] = Field(None, description="Name of person or firm who prepared the document")
+
+class TaxReturn(TaxDocument):
+    """Represents a tax return filing"""
+    return_type: Optional[str] = Field(None, description="Type of tax return (e.g., Form 1120, Form 1065)")
+    tax_types: List[TaxType] = Field(default_factory=list, description="Types of taxes covered in the return")
+    filing_status: TaxFilingStatus = Field(TaxFilingStatus.FILED_ON_TIME, description="Status of the tax filing")
+    filing_date: Optional[date] = Field(None, description="Date the return was filed")
+    due_date: Optional[date] = Field(None, description="Original due date for the return")
+    extended_due_date: Optional[date] = Field(None, description="Extended due date if an extension was filed")
+    taxable_income: Optional[float] = Field(None, description="Reported taxable income amount")
+    tax_liability: Optional[float] = Field(None, description="Total tax liability reported")
+    tax_paid: Optional[float] = Field(None, description="Total tax already paid or credited")
+    balance_due_or_refund: Optional[float] = Field(None, description="Final balance due or refund amount")
+    signature_present: Optional[bool] = Field(None, description="Whether the return contains required signatures")
+    electronic_filing: Optional[bool] = Field(None, description="Whether the return was filed electronically")
+    amended: Optional[bool] = Field(False, description="Whether this is an amended return")
+    consolidated_return: Optional[bool] = Field(False, description="Whether this is a consolidated return filing")
+    included_entities: Optional[List[str]] = Field(None, description="Entities included in a consolidated return")
+    
+    # Common tax schedules and forms
+    key_schedules_present: Optional[List[str]] = Field(None, description="Key schedules or forms included (e.g., 'Schedule M-3', 'Form 5471')")
+    
+    # Auditor's notes
+    material_positions: Optional[List[str]] = Field(None, description="Material tax positions or elections taken")
+    notes: Optional[str] = Field(None, description="Additional notes or observations about the return")
+
+class CorporateTaxReturn(TaxReturn):
+    """Corporate income tax return"""
+    corporate_structure: Optional[str] = Field(None, description="Corporate structure (e.g., C-Corp, S-Corp)")
+    revenue: Optional[float] = Field(None, description="Total revenue reported")
+    cogs: Optional[float] = Field(None, description="Cost of goods sold")
+    gross_profit: Optional[float] = Field(None, description="Gross profit")
+    total_deductions: Optional[float] = Field(None, description="Total deductions claimed")
+    net_operating_loss: Optional[float] = Field(None, description="Net operating loss reported or utilized")
+    foreign_tax_credits: Optional[float] = Field(None, description="Foreign tax credits claimed")
+    other_credits: Optional[Dict[str, float]] = Field(None, description="Other tax credits claimed")
+    total_assets: Optional[float] = Field(None, description="Total assets reported")
+    total_liabilities: Optional[float] = Field(None, description="Total liabilities reported")
+    shareholder_equity: Optional[float] = Field(None, description="Shareholder equity")
+    dividend_distributions: Optional[float] = Field(None, description="Dividend distributions made")
+    officer_compensation: Optional[Dict[str, float]] = Field(None, description="Compensation to officers")
+    depreciation_method: Optional[str] = Field(None, description="Depreciation method used")
+    depreciation_amount: Optional[float] = Field(None, description="Depreciation amount claimed")
+    amortization_amount: Optional[float] = Field(None, description="Amortization amount claimed")
+    
+    # International tax information
+    has_foreign_operations: Optional[bool] = Field(None, description="Indicates if company has foreign operations")
+    foreign_subsidiaries: Optional[List[str]] = Field(None, description="Foreign subsidiaries reported")
+    transfer_pricing_documentation: Optional[bool] = Field(None, description="Whether transfer pricing documentation was referenced")
+    
+    # Key tax reconciliation items
+    book_to_tax_differences: Optional[Dict[str, float]] = Field(None, description="Major book-to-tax differences")
+    effective_tax_rate: Optional[float] = Field(None, description="Effective tax rate")
+    statutory_to_effective_rate_reconciliation: Optional[Dict[str, float]] = Field(None, description="Reconciliation of statutory to effective rate")
+
+class PassthroughTaxReturn(TaxReturn):
+    """Tax return for pass-through entities (partnerships, LLCs, S-Corps)"""
+    entity_type: Optional[str] = Field(None, description="Type of pass-through entity (e.g., Partnership, LLC, S-Corp)")
+    number_of_partners: Optional[int] = Field(None, description="Number of partners or members")
+    ordinary_income: Optional[float] = Field(None, description="Ordinary business income or loss")
+    rental_income: Optional[float] = Field(None, description="Rental income or loss")
+    interest_income: Optional[float] = Field(None, description="Interest income")
+    dividend_income: Optional[float] = Field(None, description="Dividend income")
+    capital_gains: Optional[float] = Field(None, description="Net capital gains or losses")
+    partner_distributions: Optional[float] = Field(None, description="Total distributions to partners/members")
+    guaranteed_payments: Optional[float] = Field(None, description="Guaranteed payments to partners")
+    
+    # Section 704(b) allocations
+    special_allocations: Optional[bool] = Field(None, description="Whether special allocations were used")
+    allocation_method: Optional[str] = Field(None, description="Method used for allocations")
+    
+    # Foreign reporting
+    foreign_partners: Optional[bool] = Field(None, description="Whether entity has foreign partners")
+    foreign_income: Optional[float] = Field(None, description="Foreign-source income reported")
+    
+    # Ownership information
+    ownership_changes: Optional[bool] = Field(None, description="Whether ownership changes occurred during tax year")
+    major_owners: Optional[List[Dict[str, Any]]] = Field(None, description="Information about major owners (>5%)")
+
+class TaxAssessment(TaxDocument):
+    """Tax assessment or notice from a tax authority"""
+    assessment_id: Optional[str] = Field(None, description="Identification number of the assessment")
+    tax_type: TaxType = Field(..., description="Type of tax being assessed")
+    assessment_amount: Optional[float] = Field(None, description="Amount of tax assessed")
+    penalties_amount: Optional[float] = Field(None, description="Amount of penalties assessed")
+    interest_amount: Optional[float] = Field(None, description="Amount of interest assessed")
+    total_amount_due: Optional[float] = Field(None, description="Total amount due")
+    issue_date: Optional[date] = Field(None, description="Date the assessment was issued")
+    response_due_date: Optional[date] = Field(None, description="Date by which a response is required")
+    payment_due_date: Optional[date] = Field(None, description="Date by which payment is due")
+    reason_for_assessment: Optional[str] = Field(None, description="Reason provided for the assessment")
+    periods_covered: Optional[List[str]] = Field(None, description="Tax periods covered by the assessment")
+    current_status: Optional[str] = Field(None, description="Current status of the assessment")
+    response_filed: Optional[bool] = Field(None, description="Whether a response has been filed")
+    payment_made: Optional[bool] = Field(None, description="Whether payment has been made")
+    dispute_in_progress: Optional[bool] = Field(None, description="Whether the assessment is being disputed")
+
+class TaxDispute(TaxDocument):
+    """Document related to a tax dispute or controversy"""
+    dispute_id: Optional[str] = Field(None, description="Identification number of the dispute")
+    tax_types: List[TaxType] = Field(default_factory=list, description="Types of taxes involved in the dispute")
+    disputed_amount: Optional[float] = Field(None, description="Amount of tax in dispute")
+    periods_covered: Optional[List[str]] = Field(None, description="Tax periods covered by the dispute")
+    dispute_status: TaxDisputeStatus = Field(TaxDisputeStatus.NO_DISPUTE, description="Current status of the dispute")
+    dispute_start_date: Optional[date] = Field(None, description="Date the dispute began")
+    dispute_forum: Optional[str] = Field(None, description="Forum where the dispute is being adjudicated")
+    issues_in_dispute: Optional[List[str]] = Field(None, description="Tax issues being disputed")
+    company_position: Optional[str] = Field(None, description="Company's position on the disputed issues")
+    authority_position: Optional[str] = Field(None, description="Tax authority's position on the disputed issues")
+    potential_exposure: Optional[float] = Field(None, description="Estimated potential financial exposure")
+    reserve_amount: Optional[float] = Field(None, description="Tax reserve amount related to the dispute")
+    external_counsel: Optional[str] = Field(None, description="External counsel representing the company")
+    settlement_offers: Optional[List[Dict[str, Any]]] = Field(None, description="Details of any settlement offers")
+    expected_resolution_date: Optional[date] = Field(None, description="Expected resolution date")
+    probability_of_favorable_outcome: Optional[float] = Field(None, description="Estimated probability of favorable outcome (0-1)")
+
+class TaxOpinion(TaxDocument):
+    """A tax opinion or advice document"""
+    opinion_provider: Optional[str] = Field(None, description="Firm or professional providing the opinion")
+    opinion_type: Optional[str] = Field(None, description="Type of tax opinion (e.g., 'Will Opinion', 'Should Opinion', 'More Likely Than Not')")
+    confidence_level: Optional[float] = Field(None, description="Numerical confidence level (0-1) if provided")
+    addressed_to: Optional[str] = Field(None, description="Entity to whom the opinion is addressed")
+    tax_issues_addressed: Optional[List[str]] = Field(None, description="Tax issues addressed in the opinion")
+    transactions_covered: Optional[List[str]] = Field(None, description="Transactions covered by the opinion")
+    key_conclusions: Optional[List[str]] = Field(None, description="Key conclusions reached in the opinion")
+    reliance_limitations: Optional[List[str]] = Field(None, description="Limitations on reliance on the opinion")
+    factual_assumptions: Optional[List[str]] = Field(None, description="Key factual assumptions made")
+    opinion_date: Optional[date] = Field(None, description="Date the opinion was issued")
+    referenced_authorities: Optional[List[str]] = Field(None, description="Tax authorities referenced (codes, regulations, cases)")
+    related_to_transaction: Optional[bool] = Field(None, description="Whether the opinion relates to a specific transaction")
+    transaction_date: Optional[date] = Field(None, description="Date of the transaction if applicable")
+    penalty_protection_intended: Optional[bool] = Field(None, description="Whether the opinion is intended to provide penalty protection")
+
+class TaxRuling(TaxDocument):
+    """A private tax ruling or determination letter"""
+    ruling_id: Optional[str] = Field(None, description="Identification number of the ruling")
+    ruling_type: Optional[str] = Field(None, description="Type of ruling (e.g., Private Letter Ruling, Technical Advice Memorandum)")
+    issuing_authority: Optional[str] = Field(None, description="Tax authority that issued the ruling")
+    requestor: Optional[str] = Field(None, description="Entity that requested the ruling")
+    issue_date: Optional[date] = Field(None, description="Date the ruling was issued")
+    effective_period: Optional[str] = Field(None, description="Period for which the ruling is effective")
+    tax_issues_addressed: Optional[List[str]] = Field(None, description="Tax issues addressed in the ruling")
+    key_determinations: Optional[List[str]] = Field(None, description="Key determinations made in the ruling")
+    applicable_law: Optional[List[str]] = Field(None, description="Applicable law sections referenced")
+    factual_assumptions: Optional[List[str]] = Field(None, description="Factual assumptions on which the ruling is based")
+    conditions_imposed: Optional[List[str]] = Field(None, description="Conditions imposed by the ruling")
+    reliance_limitations: Optional[List[str]] = Field(None, description="Limitations on reliance on the ruling")
+    related_transactions: Optional[List[str]] = Field(None, description="Transactions to which the ruling applies")
+
+class TaxAudit(TaxDocument):
+    """Document related to a tax audit or examination"""
+    audit_id: Optional[str] = Field(None, description="Identification number of the audit")
+    auditing_authority: Optional[str] = Field(None, description="Tax authority conducting the audit")
+    tax_types: List[TaxType] = Field(default_factory=list, description="Types of taxes being audited")
+    periods_under_audit: Optional[List[str]] = Field(None, description="Tax periods under audit")
+    audit_start_date: Optional[date] = Field(None, description="Date the audit began")
+    audit_status: Optional[str] = Field(None, description="Current status of the audit")
+    initial_information_request_date: Optional[date] = Field(None, description="Date of initial information request")
+    information_provided: Optional[bool] = Field(None, description="Whether requested information has been provided")
+    issues_identified: Optional[List[str]] = Field(None, description="Issues identified by the auditor")
+    proposed_adjustments: Optional[Dict[str, float]] = Field(None, description="Proposed tax adjustments by issue")
+    company_responses: Optional[Dict[str, str]] = Field(None, description="Company's responses to identified issues")
+    expected_completion_date: Optional[date] = Field(None, description="Expected completion date of the audit")
+    potential_exposure: Optional[float] = Field(None, description="Estimated potential financial exposure")
+    audit_representatives: Optional[List[str]] = Field(None, description="Company representatives for the audit")
+    external_advisors: Optional[List[str]] = Field(None, description="External advisors assisting with the audit")
+
+class TaxPlanningDocument(TaxDocument):
+    """Tax planning document or strategy"""
+    planning_strategy_name: Optional[str] = Field(None, description="Name of the tax planning strategy")
+    prepared_by: Optional[str] = Field(None, description="Firm or professional who prepared the document")
+    preparation_date: Optional[date] = Field(None, description="Date the document was prepared")
+    implementation_status: Optional[str] = Field(None, description="Implementation status of the planning strategy")
+    target_jurisdictions: Optional[List[str]] = Field(None, description="Jurisdictions targeted by the planning")
+    tax_types_addressed: List[TaxType] = Field(default_factory=list, description="Types of taxes addressed")
+    expected_tax_benefit: Optional[float] = Field(None, description="Expected tax benefit amount")
+    annual_tax_savings: Optional[float] = Field(None, description="Estimated annual tax savings")
+    implementation_costs: Optional[float] = Field(None, description="Estimated costs to implement")
+    key_steps: Optional[List[str]] = Field(None, description="Key steps in the planning strategy")
+    required_restructuring: Optional[str] = Field(None, description="Restructuring required for implementation")
+    risks_identified: Optional[List[str]] = Field(None, description="Risks identified with the strategy")
+    risk_mitigation_steps: Optional[List[str]] = Field(None, description="Steps to mitigate identified risks")
+    reportable_transaction: Optional[bool] = Field(None, description="Whether the strategy is a reportable transaction")
+    approval_status: Optional[str] = Field(None, description="Approval status of the strategy")
+    approving_parties: Optional[List[str]] = Field(None, description="Parties who approved the strategy")
+
+class TaxIncentiveDocument(TaxDocument):
+    """Document related to tax incentives, credits, or special regimes"""
+    incentive_type: TaxIncentiveType = Field(..., description="Type of tax incentive")
+    incentive_description: Optional[str] = Field(None, description="Description of the tax incentive")
+    governing_authority: Optional[str] = Field(None, description="Authority governing the incentive")
+    qualification_criteria: Optional[List[str]] = Field(None, description="Criteria for qualifying for the incentive")
+    application_date: Optional[date] = Field(None, description="Date of application for the incentive")
+    approval_date: Optional[date] = Field(None, description="Date the incentive was approved")
+    effective_period_start: Optional[date] = Field(None, description="Start date of the effective period")
+    effective_period_end: Optional[date] = Field(None, description="End date of the effective period")
+    benefit_amount: Optional[float] = Field(None, description="Amount of benefit received or expected")
+    qualifying_expenditures: Optional[float] = Field(None, description="Amount of qualifying expenditures")
+    compliance_requirements: Optional[List[str]] = Field(None, description="Ongoing compliance requirements")
+    reporting_obligations: Optional[List[str]] = Field(None, description="Reporting obligations to maintain the incentive")
+    carryforward_available: Optional[bool] = Field(None, description="Whether unused benefits can be carried forward")
+    carryforward_period_years: Optional[int] = Field(None, description="Years for which benefits can be carried forward")
+    recapture_provisions: Optional[List[str]] = Field(None, description="Provisions for recapture of benefits")
+    current_status: Optional[str] = Field(None, description="Current status of the incentive")
+
+class TransferPricingDocument(TaxDocument):
+    """Transfer pricing documentation"""
+    documentation_type: Optional[str] = Field(None, description="Type of transfer pricing documentation (e.g., Master File, Local File)")
+    covered_entities: Optional[List[str]] = Field(None, description="Entities covered by the documentation")
+    covered_transactions: Optional[List[str]] = Field(None, description="Intercompany transactions covered")
+    annual_transaction_volume: Optional[Dict[str, float]] = Field(None, description="Volume of transactions by type")
+    pricing_methodology: Optional[Dict[str, str]] = Field(None, description="Methodology used for each transaction type")
+    benchmark_studies_present: Optional[bool] = Field(None, description="Whether benchmark studies are included")
+    comparables_identified: Optional[List[str]] = Field(None, description="Comparable companies identified")
+    arm_length_range: Optional[Dict[str, List[float]]] = Field(None, description="Arm's length ranges determined")
+    actual_results: Optional[Dict[str, float]] = Field(None, description="Actual results achieved")
+    adjustments_made: Optional[Dict[str, float]] = Field(None, description="Adjustments made to achieve arm's length")
+    functional_analysis_present: Optional[bool] = Field(None, description="Whether functional analysis is included")
+    industry_analysis_present: Optional[bool] = Field(None, description="Whether industry analysis is included")
+    risk_assessment: Optional[str] = Field(None, description="Risk assessment for transfer pricing positions")
+    prepared_by: Optional[str] = Field(None, description="Firm that prepared the documentation")
+    local_filing_requirements_met: Optional[bool] = Field(None, description="Whether documentation meets local requirements")
+    apa_in_place: Optional[bool] = Field(None, description="Whether an Advance Pricing Agreement is in place")
+    apa_terms: Optional[str] = Field(None, description="Terms of any Advance Pricing Agreement")
+
+class TaxProvisionDocument(TaxDocument, FinancialDocument):
+    """Tax provision or accrual documentation"""
+    provision_period: Optional[str] = Field(None, description="Period covered by the provision (e.g., Q1 2023)")
+    provision_type: Optional[str] = Field(None, description="Type of provision (e.g., Annual, Quarterly, Interim)")
+    provision_methodology: Optional[str] = Field(None, description="Methodology used for the provision")
+    current_tax_expense: Optional[float] = Field(None, description="Current tax expense recorded")
+    deferred_tax_expense: Optional[float] = Field(None, description="Deferred tax expense recorded")
+    total_tax_expense: Optional[float] = Field(None, description="Total tax expense recorded")
+    effective_tax_rate: Optional[float] = Field(None, description="Effective tax rate for the period")
+    rate_reconciliation: Optional[Dict[str, float]] = Field(None, description="Reconciliation of statutory to effective rate")
+    permanent_differences: Optional[Dict[str, float]] = Field(None, description="Permanent differences by type")
+    temporary_differences: Optional[Dict[str, float]] = Field(None, description="Temporary differences by type")
+    valuation_allowances: Optional[Dict[str, float]] = Field(None, description="Valuation allowances by type")
+    unrecognized_tax_benefits: Optional[float] = Field(None, description="Unrecognized tax benefits (FIN 48/ASC 740-10)")
+    uncertain_tax_positions: Optional[List[Dict[str, Any]]] = Field(None, description="Details of uncertain tax positions")
+    deferred_tax_assets: Optional[Dict[str, float]] = Field(None, description="Deferred tax assets by type")
+    deferred_tax_liabilities: Optional[Dict[str, float]] = Field(None, description="Deferred tax liabilities by type")
+    net_operating_losses: Optional[Dict[str, float]] = Field(None, description="Net operating losses by jurisdiction")
+    tax_credits: Optional[Dict[str, float]] = Field(None, description="Tax credits by type")
+    prepared_in_accordance_with: Optional[str] = Field(None, description="Accounting standard used (e.g., GAAP, IFRS)")
+    review_level: Optional[str] = Field(None, description="Level of review performed (e.g., Audited, Reviewed)")
+    material_weakness_identified: Optional[bool] = Field(None, description="Whether material weaknesses were identified")
+    remediation_plan: Optional[str] = Field(None, description="Plan to remediate any weaknesses identified")
+
+class PropertyTaxDocument(TaxDocument):
+    """Property tax related document"""
+    property_address: Optional[str] = Field(None, description="Address of the property")
+    property_id: Optional[str] = Field(None, description="Tax identifier for the property")
+    property_type: Optional[str] = Field(None, description="Type of property (e.g., commercial, industrial)")
+    assessment_date: Optional[date] = Field(None, description="Date of the property assessment")
+    assessed_value: Optional[float] = Field(None, description="Assessed value of the property")
+    market_value: Optional[float] = Field(None, description="Market value of the property")
+    taxable_value: Optional[float] = Field(None, description="Taxable value after exemptions")
+    millage_rate: Optional[float] = Field(None, description="Tax rate applied (mills)")
+    tax_amount: Optional[float] = Field(None, description="Tax amount assessed")
+    payment_due_date: Optional[date] = Field(None, description="Date payment is due")
+    exemptions_applied: Optional[List[str]] = Field(None, description="Exemptions applied to the assessment")
+    appeal_filed: Optional[bool] = Field(None, description="Whether an appeal has been filed")
+    appeal_status: Optional[str] = Field(None, description="Status of any appeal")
+    appeal_deadline: Optional[date] = Field(None, description="Deadline for filing an appeal")
+    payment_status: Optional[str] = Field(None, description="Status of tax payment")
+    special_assessments: Optional[List[Dict[str, Any]]] = Field(None, description="Special assessments applied")
+
+class CustomsDocument(TaxDocument):
+    """Customs and import tax related document"""
+    import_jurisdiction: Optional[str] = Field(None, description="Jurisdiction of import")
+    export_jurisdiction: Optional[str] = Field(None, description="Jurisdiction of export")
+    imported_goods: Optional[List[str]] = Field(None, description="Goods being imported")
+    harmonized_tariff_codes: Optional[List[str]] = Field(None, description="Harmonized tariff codes used")
+    customs_value: Optional[float] = Field(None, description="Declared customs value")
+    duties_paid: Optional[float] = Field(None, description="Amount of duties paid")
+    import_taxes_paid: Optional[float] = Field(None, description="Amount of import taxes paid")
+    preferential_treatment_claimed: Optional[bool] = Field(None, description="Whether preferential treatment was claimed")
+    preferential_program: Optional[str] = Field(None, description="Preferential program used (e.g., USMCA/NAFTA)")
+    certificate_of_origin: Optional[bool] = Field(None, description="Whether certificate of origin was provided")
+    broker_used: Optional[str] = Field(None, description="Customs broker used")
+    entry_date: Optional[date] = Field(None, description="Date of entry")
+    liquidation_date: Optional[date] = Field(None, description="Date of liquidation")
+    post_entry_adjustments: Optional[List[Dict[str, Any]]] = Field(None, description="Post-entry adjustments made")
+    customs_audit_status: Optional[str] = Field(None, description="Status of any customs audit")
+    transfer_pricing_impact: Optional[str] = Field(None, description="Impact of transfer pricing on customs value")
