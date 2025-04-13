@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import json
 
-from models.auto import AutoModel, ModelSelection
+from models.auto import AutoModel, AutoDocumentClassification
 from models import SoftwareLicenseAgreement, EmploymentContract
 
 
@@ -10,8 +10,8 @@ class TestAutoModel:
     @patch('models.auto.cached_llm_invoke')
     def test_auto_model_selection(self, mock_llm_invoke, mock_pdf_path):
         """Test that AutoModel correctly selects the appropriate model."""
-        # Create a ModelSelection instance for the mock response
-        mock_response = ModelSelection(model_name="SoftwareLicenseAgreement")
+        # Create a AutoDocumentClassification instance for the mock response
+        mock_response = AutoDocumentClassification(model_name="SoftwareLicenseAgreement")
         
         # Setup mock
         mock_llm_invoke.return_value = mock_response
@@ -35,8 +35,8 @@ class TestAutoModel:
     @patch('models.auto.cached_llm_invoke')
     def test_auto_model_with_class_name(self, mock_llm_invoke, mock_pdf_path):
         """Test that AutoModel correctly handles class name instead of dict key."""
-        # Create a ModelSelection instance with the class name instead of the dict key
-        mock_response = ModelSelection(model_name="EmploymentContract")
+        # Create a AutoDocumentClassification instance with the class name instead of the dict key
+        mock_response = AutoDocumentClassification(model_name="EmploymentContract")
         
         # Setup mock
         mock_llm_invoke.return_value = mock_response
@@ -60,8 +60,8 @@ class TestAutoModel:
     @patch('models.auto.cached_llm_invoke')
     def test_auto_model_with_invalid_model(self, mock_llm_invoke, mock_pdf_path):
         """Test AutoModel behavior when an invalid model is selected."""
-        # Create a ModelSelection instance with an invalid model name
-        mock_response = ModelSelection(model_name="InvalidModel")
+        # Create a AutoDocumentClassification instance with an invalid model name
+        mock_response = AutoDocumentClassification(model_name="InvalidModel")
         
         # Setup mock
         mock_llm_invoke.return_value = mock_response

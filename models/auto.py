@@ -1,4 +1,4 @@
-from typing import Dict, Type, Any, List
+from typing import Dict, Type, Any, List, Union
 import os
 from .base import DiligentizerModel
 from pydantic import Field, BaseModel
@@ -9,8 +9,9 @@ from instructor.multimodal import PDF
 import sys
 
 from utils.llm import cached_llm_invoke
+from utils import logger
 
-class ModelSelection(BaseModel):
+class AutoDocumentClassification(DiligentizerModel):
     """Model used to receive the selected model name from the LLM."""
     model_name: str = Field(..., description="The name of the most appropriate model for this document")
 
@@ -22,7 +23,9 @@ class AutoModel(DiligentizerModel):
     chosen_model_result: Any = Field(None, description="The result from the chosen model")
     
     @classmethod
-    def from_pdf(cls, pdf_path: str, available_models: Dict[str, Type[DiligentizerModel]]) -> "AutoModel":
+    def from_pdf(cls, pdf_path: str,
+                 available_models: Dict[str, Type[DiligentizerModel]],
+                 classify_only: bool = False) -> Union["AutoModel", Type[AutoDocumentClassification]]:
         """Use LLM to select and apply the most appropriate model for the document."""
         # Load the PDF for analysis
         pdf_input = PDF.from_path(pdf_path)
@@ -62,17 +65,26 @@ Respond with only the exact model name (one of the keys from the available model
             {"type": "text", "text": prompt},
             pdf_input  # instructor's PDF class handles formatting correctly
         ]
+
+        logger.info(f"Calling LLM from AutoModel: {message_content}")
         
         # Make the API call with cached instructor
         response = cached_llm_invoke(
             system_message="You are a document analysis assistant.",
             user_content=message_content,
             max_tokens=500,
-            response_model=ModelSelection
+            response_model=AutoDocumentClassification
         )
         
         model_selection = response
+        logger.info(f"Selected {model_selection.model_name}")
+
+        # If we are asked only to return the document classification, then do so
+        if classify_only:
+            return model_selection
         
+        # Otherwise, carry on building out the chosen model so that it can be filled
+        # in by the caller
         chosen_model_name = model_selection.model_name
         
         # Validate the chosen model exists - try exact match first
@@ -97,11 +109,6 @@ Respond with only the exact model name (one of the keys from the available model
             
             chosen_model_name = chosen_model_key
             model_class = available_models[chosen_model_key]
-        
-        print(f"\nAuto model selection result: '{chosen_model_name}'")
-        
-        # Now use the selected model to analyze the document
-        # (model_class is already set in the validation step above)
         
         # Get the description of the chosen model
         chosen_model_description = model_class.__doc__ or "No description available"

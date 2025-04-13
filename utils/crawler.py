@@ -20,14 +20,14 @@ def process_file(args: Tuple) -> Tuple[bool, str, Optional[Exception]]:
     Returns:
         Tuple of (success, file_path, exception)
     """
-    pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path = args
+    pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, auto_enabled = args
     
     try:
         # Calculate relative path for output
         relative_path = pdf_path.relative_to(crawl_path)
         
         # Run analysis on this file
-        result = run_analysis(model_class, str(pdf_path), sqlite_path)
+        result = run_analysis(model_class, str(pdf_path), sqlite_path, auto_enabled)
         
         # Save result as JSON if requested
         if json_output_dir and result:
@@ -62,7 +62,8 @@ def process_directory(
     selected_model: str,
     json_output_dir: Optional[Path] = None,
     sqlite_path: Optional[str] = None,
-    parallel: int = 0
+    parallel: int = 0,
+    auto_enabled: bool = False
 ) -> int:
     """
     Recursively process all PDF files in the specified directory.
@@ -73,6 +74,8 @@ def process_directory(
         selected_model: Name of the selected model (for output filenames)
         json_output_dir: Optional directory to save JSON output
         sqlite_path: Optional path to SQLite database
+        parallel: Number of parallel processes to run
+        auto_enabled: Will be passed to run_analysis()
         
     Returns:
         int: 0 for success, 1 for failure
@@ -93,14 +96,12 @@ def process_directory(
     
     # Determine whether to use parallel processing
     if parallel > 0:
-        # Use the specified number of processes or the CPU count, whichever is smaller
-        num_processes = min(parallel, multiprocessing.cpu_count())
-        print(f"Processing files in parallel using {num_processes} processes...")
-        logger.info(f"Using parallel processing with {num_processes} processes")
+        print(f"Processing files in parallel using {parallel} processes...")
+        logger.info(f"Using parallel processing with {parallel} processes")
         
         # Prepare arguments for each file
         process_args = [
-            (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path)
+            (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, auto_enabled)
             for pdf_path in pdf_files
         ]
         
@@ -108,7 +109,7 @@ def process_directory(
         success_count = 0
         failure_count = 0
         
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        with ProcessPoolExecutor(max_workers=parallel) as executor:
             for i, (success, file_path, exception) in enumerate(executor.map(process_file, process_args)):
                 relative_path = Path(file_path).relative_to(crawl_path)
                 if success:
@@ -132,7 +133,7 @@ def process_directory(
             print(f"\nProcessing ({i+1}/{len(pdf_files)}): {relative_path}")
             logger.info(f"Processing file: {pdf_path}")
             
-            success, _, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path))
+            success, _, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, auto_enabled))
             
             if success:
                 print(f"Successfully processed: {relative_path}")

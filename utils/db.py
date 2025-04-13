@@ -43,6 +43,7 @@ class EntityDefinition:
 
 # Define common entities for normalization based on the models in the codebase
 COMMON_ENTITIES = [
+    EntityDefinition("DocumentClassification", ["model_name"]),
     EntityDefinition("Customer", ["name", "customer_name", "client_name", "client", "licensee", "counterparty"]),
     EntityDefinition("Employee", ["employee_name", "staff_name", "personnel_name", "employee"]),
     EntityDefinition("Company", ["company_name", "organization_name", "org_name", "corporate_name", "employer", "licensor", "company"]),

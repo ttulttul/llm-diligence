@@ -13,7 +13,31 @@ load_dotenv()
 from analysis import get_available_models, list_available_models, run_analysis
 from utils import logger, configure_logger
 from utils.crawler import process_directory
+from utils.db import setup_database, save_model_to_db
 
+def save_to_db(db_path, response): 
+    logger.info(f"Attempting to save response to database at {db_path}: {response}")
+    try:
+        # Set up the database with all available models
+        models_dict = get_available_models()
+        model_classes = list(models_dict.values())
+        engine, Session, sa_models = setup_database(db_path, model_classes)
+    except Exception as e:
+        logger.error(f"Error setting up database: {e}", exc_info=True)
+   
+    try:
+        # Create a session and save the model
+        with Session() as session:
+            # Convert the model to a JSON-compatible dict
+            json_compatible_data = json.loads(response.model_dump_json())
+        
+            # Create a new instance with the JSON data
+            json_safe_response = type(response).model_validate(json_compatible_data)
+        
+            sa_instance = save_model_to_db(json_safe_response, sa_models, session)
+            logger.info(f"Saved to database: {db_path}, table: {sa_instance.__tablename__}, ID: {sa_instance.id}")
+    except Exception as e:
+        logger.error(f"Error saving to database: {e}", exc_info=True)
 
 def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class):
     """Process a CSV file, analyzing text in the specified column and outputting results.
@@ -140,6 +164,7 @@ def main():
         group.add_argument("--list", action="store_true", help="List all available models")
         group.add_argument("--model", type=str, help="Specify the model to use")
         group.add_argument("--auto", action="store_true", help="Automatically select the most appropriate model")
+        parser.add_argument("--classify-only", action="store_true", help="Return the auto-selected model rather than applying that model to the document. This is useful for pre-classification. (default: False)", default=False)
         parser.add_argument("--pdf", type=str, help="Path to the PDF file")
         parser.add_argument("--crawl-dir", type=str,
                            help="Recursively process all PDF files in the specified directory")
@@ -200,6 +225,17 @@ def main():
         else:
             # If args.model is provided, use it directly
             selected_model = args.model
+
+        # By default, if the auto model is specified either using --model auto_AutoModel
+        # or through the shortcut --auto, then the analysis will first use the auto model
+        # to find the right diligence model to use. Then, it will analyze the document using
+        # that automatically selected model. If classify_only is True, then we skip the second
+        # step and simply return the result from the auto model, which is effectively a classification.
+        classify_only = False
+
+        # The --auto-only switch disables running the model that the auto model selected.
+        if args.classify_only:
+            classify_only = True
         
         # Validate the selected model exists
         if selected_model not in models_dict:
@@ -272,7 +308,8 @@ def main():
                 selected_model,
                 json_output_dir,
                 args.sqlite,
-                args.parallel
+                args.parallel,
+                classify_only
             )
             if return_code != 0:
                 return return_code
@@ -283,7 +320,7 @@ def main():
                 logger.error("No PDF file specified")
                 return 1
                 
-            result = run_analysis(model_class, args.pdf, args.sqlite)
+            result = run_analysis(model_class, args.pdf, args.sqlite, classify_only)
             
             # Save result as JSON if requested
             if json_output_dir and result:
@@ -298,6 +335,10 @@ def main():
                 except Exception as e:
                     logger.error(f"Failed to save JSON output: {e}")
                     print(f"Error saving JSON output: {e}")
+
+            # Save to db if requested
+            if args.sqlite:
+                save_to_db(args.sqlite, result)
         
         return 0
     except KeyboardInterrupt:
