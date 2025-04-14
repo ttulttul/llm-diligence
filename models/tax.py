@@ -61,7 +61,7 @@ class TaxIncentiveType(str, Enum):
     OTHER = "other tax incentive"
 
 class TaxDocument(DiligentizerModel):
-    """Base class for all tax-related documents such as documents from Canada Revenue Agency or the IRS"""
+    """A document related to taxation, such as documents from Canada Revenue Agency or the IRS"""
     tax_year: Optional[str] = Field(None, description="The tax year(s) the document pertains to")
     company_name: Optional[str] = Field(None, description="Name of the company or entity")
     tax_id_number: Optional[str] = Field(None, description="Tax identification number (e.g., EIN, TIN)")
@@ -77,7 +77,7 @@ class TaxDocument(DiligentizerModel):
     related_documents: Optional[List[str]] = Field(None, description="References to related tax documents")
 
 class ComplianceDocument(TaxDocument):
-    """Base class for tax compliance-related documents"""
+    """A document related to tax compliance requirements and filings"""
     due_date: Optional[date] = Field(None, description="Original due date for the document")
     extended_due_date: Optional[date] = Field(None, description="Extended due date if an extension was filed")
     filing_date: Optional[date] = Field(None, description="Date the document was filed")
@@ -90,7 +90,7 @@ class ComplianceDocument(TaxDocument):
     extension_details: Optional[str] = Field(None, description="Details about any extension")
 
 class AnalyticalDocument(TaxDocument):
-    """Base class for tax analytical documents"""
+    """A document containing tax analysis, assessments, or evaluations"""
     analysis_date: Optional[date] = Field(None, description="Date the analysis was performed")
     analysis_period: Optional[str] = Field(None, description="Period covered by the analysis")
     analysis_purpose: Optional[str] = Field(None, description="Purpose of the analysis")
@@ -114,7 +114,7 @@ class AuthorityDocument(TaxDocument):
     receipt_date: Optional[date] = Field(None, description="Date the document was received")
 
 class AdvisoryDocument(TaxDocument):
-    """Base class for tax advisory documents"""
+    """A document providing tax advice, guidance, or recommendations"""
     advisor: Optional[str] = Field(None, description="Advisor who provided the advice")
     advisor_firm: Optional[str] = Field(None, description="Firm of the advisor")
     advice_date: Optional[date] = Field(None, description="Date the advice was provided")
