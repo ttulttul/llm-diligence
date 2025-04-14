@@ -380,22 +380,12 @@ def main():
         # Set up CSV output for classification results if requested
         csv_file = None
         csv_writer = None
+        max_path_length = 0  # Track the maximum path length for dynamic column creation
+        classification_results = []  # Store results temporarily to determine max path length
+        
         if args.classify_only and args.classify_to_csv:
-            import csv
-            try:
-                csv_file = open(args.classify_to_csv, 'w', newline='')
-                csv_writer = csv.writer(csv_file)
-                # Write header row
-                csv_writer.writerow(['file_path', 'model_name', 'selection_path'])
-                logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
-                print(f"Classification results will be saved to: {args.classify_to_csv}")
-            except Exception as e:
-                logger.error(f"Failed to create CSV file: {e}")
-                print(f"Error creating CSV file: {e}")
-                if csv_file:
-                    csv_file.close()
-                csv_file = None
-                csv_writer = None
+            logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
+            print(f"Classification results will be saved to: {args.classify_to_csv}")
         
         for success, file_path, result, exception in results_generator:
             if success:
@@ -422,11 +412,23 @@ def main():
                     logger.info(f"Saving to db: {result}")
                     save_to_db(args.sqlite, result)
                 
-                # Write classification result to CSV if requested
-                if args.classify_only and csv_writer and hasattr(result, 'model_name'):
-                    csv_writer.writerow([file_path, result.model_name, result.selection_path])
+                # Store classification result for CSV if requested
+                if args.classify_only and hasattr(result, 'model_name'):
+                    # Store the result for later writing to CSV
+                    result_data = {
+                        'file_path': file_path,
+                        'model_name': result.model_name,
+                        'selection_path': result.selection_path if hasattr(result, 'selection_path') else []
+                    }
+                    classification_results.append(result_data)
+                    
+                    # Update max path length if needed
+                    if hasattr(result, 'selection_path') and result.selection_path:
+                        path_length = len(result.selection_path)
+                        max_path_length = max(max_path_length, path_length)
+                
                 # If this is an AutoModel result with a selection path, log it
-                elif hasattr(result, 'selection_path') and result.selection_path:
+                if hasattr(result, 'selection_path') and result.selection_path:
                     path_str = " -> ".join(result.selection_path)
                     logger.info(f"Model selection path: {path_str}")
                     print(f"Model selection path: {path_str}")
@@ -440,10 +442,39 @@ def main():
             print(f"\nCompleted processing {total} files.")
             print(f"Success: {success_count}, Failures: {failure_count}")
         
-        # Close CSV file if it was opened
-        if csv_file:
-            csv_file.close()
-            logger.info(f"Classification CSV file closed: {args.classify_to_csv}")
+        # Write classification results to CSV if we collected any
+        if args.classify_only and args.classify_to_csv and classification_results:
+            import csv
+            try:
+                # Create header row with dynamic path columns
+                header = ['file_path', 'model_name']
+                for i in range(max_path_length):
+                    header.append(f'path_level_{i+1}')
+                
+                with open(args.classify_to_csv, 'w', newline='') as csv_file:
+                    csv_writer = csv.writer(csv_file)
+                    # Write header row
+                    csv_writer.writerow(header)
+                    
+                    # Write each result with path elements in separate columns
+                    for result in classification_results:
+                        row = [result['file_path'], result['model_name']]
+                        
+                        # Add each path element as a separate column
+                        path = result['selection_path']
+                        for i in range(max_path_length):
+                            if i < len(path):
+                                row.append(path[i])
+                            else:
+                                row.append('')  # Empty string for missing path elements
+                        
+                        csv_writer.writerow(row)
+                
+                logger.info(f"Classification results written to: {args.classify_to_csv}")
+                print(f"Classification results written to: {args.classify_to_csv}")
+            except Exception as e:
+                logger.error(f"Failed to write CSV file: {e}")
+                print(f"Error writing CSV file: {e}")
         
         return 0
     except KeyboardInterrupt:
