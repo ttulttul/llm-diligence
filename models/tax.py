@@ -60,7 +60,7 @@ class TaxIncentiveType(str, Enum):
     EXPORT_INCENTIVE = "export incentive"
     OTHER = "other tax incentive"
 
-class TaxDocument(DiligentizerModel):
+class TaxDocument(FinancialDocument):
     """A document related to taxation, such as documents from Canada Revenue Agency or the IRS.
     
     This model serves as the foundation for all tax-related document types, capturing essential
@@ -476,7 +476,7 @@ class TaxIncentiveDocument(ComplianceDocument):
     recapture_provisions: Optional[List[str]] = Field(None, description="Provisions for recapture of benefits")
     current_status: Optional[str] = Field(None, description="Current status of the incentive")
 
-class TransferPricingDocument(AnalyticalDocument):
+class TransferPricingDocument(AnalyticalDocument, TaxDocument):
     """Transfer pricing documentation"""
     documentation_type: Optional[str] = Field(None, description="Type of transfer pricing documentation (e.g., Master File, Local File)")
     covered_entities: Optional[List[str]] = Field(None, description="Entities covered by the documentation")

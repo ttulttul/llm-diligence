@@ -9,7 +9,7 @@ class ModelEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-from .base import DiligentizerModel
+from .base import DiligentizerModel, FinancialDocument
 from .contracts import (
     Agreement,
     AgreementParty,
@@ -20,6 +20,15 @@ from .contracts import (
 )
 from .contracts import EmploymentContract
 from .financial import FinancialStatement
+from .tax import (
+    TaxDocument, ComplianceDocument, AnalyticalDocument, TaxAuthorityDocument,
+    ProfessionalTaxAdvisoryDocument, TaxReturn, CorporateTaxReturn, PassthroughTaxReturn,
+    TaxAssessment, TaxDispute, ProfessionalTaxOpinion, TaxRuling, TaxNotice,
+    TaxSettlement, TaxRiskAssessment, TaxReservesAnalysis, TaxAudit, TaxPlanningDocument,
+    TaxIncentiveDocument, TransferPricingDocument, TaxComplianceCalendar,
+    TaxAuthorityCorrespondence, AuditHistory, AuditWorkpaper, TaxProvisionDocument,
+    PropertyTaxDocument, CustomsDocument
+)
 from .legal import (
     SoftwareLicenseAgreement, LicenseGrantType, LicenseScope,
     WarrantyType, LiabilityLimit, DisputeResolutionMethod,
