@@ -633,3 +633,78 @@ class CustomsDocument(ComplianceDocument):
     post_entry_adjustments: Optional[List[Dict[str, Any]]] = Field(None, description="Post-entry adjustments made")
     customs_audit_status: Optional[str] = Field(None, description="Status of any customs audit")
     transfer_pricing_impact: Optional[str] = Field(None, description="Impact of transfer pricing on customs value")
+
+class WithholdingCertificateType(str, Enum):
+    """Types of withholding tax certificates"""
+    W8BEN = "W-8BEN"
+    W8BENE = "W-8BEN-E"
+    W8ECI = "W-8ECI"
+    W8EXP = "W-8EXP"
+    W8IMY = "W-8IMY"
+    W9 = "W-9"
+    OTHER = "Other"
+
+class TaxTreatyClaimStatus(str, Enum):
+    """Status of tax treaty claims"""
+    CLAIMED = "treaty benefits claimed"
+    NOT_CLAIMED = "no treaty benefits claimed"
+    PARTIAL = "partial treaty benefits claimed"
+    PENDING = "treaty claim pending"
+    REJECTED = "treaty claim rejected"
+
+class W8BenDocument(ComplianceDocument):
+    """Certificate of Foreign Status of Beneficial Owner for United States Tax Withholding and Reporting (W-8BEN)
+    
+    This model captures the key information from a W-8BEN form, which is used by foreign individuals to:
+    1. Establish foreign status
+    2. Claim tax treaty benefits for certain types of income
+    3. Claim exemption from withholding on certain types of U.S. source income
+    
+    The W-8BEN is a critical document for international tax compliance and is required by U.S. withholding 
+    agents and payers before making payments to foreign individuals that might otherwise be subject to 
+    30% withholding under FATCA or other U.S. tax provisions."""
+    
+    # Form identification
+    form_version: Optional[str] = Field(None, description="Version of the W-8BEN form (e.g., 'Rev. 10-2021')")
+    form_type: WithholdingCertificateType = Field(WithholdingCertificateType.W8BEN, description="Type of withholding certificate")
+    
+    # Part I: Identification of Beneficial Owner
+    individual_name: str = Field(..., description="Name of individual that is the beneficial owner")
+    country_of_citizenship: str = Field(..., description="Country of citizenship")
+    permanent_residence_address: str = Field(..., description="Permanent residence address (no P.O. box or in-care-of address)")
+    city_town: str = Field(..., description="City or town of permanent residence")
+    country_of_residence: str = Field(..., description="Country of permanent residence")
+    mailing_address: Optional[str] = Field(None, description="Mailing address (if different from permanent residence)")
+    mailing_city_town: Optional[str] = Field(None, description="City or town of mailing address")
+    mailing_country: Optional[str] = Field(None, description="Country of mailing address")
+    us_taxpayer_id: Optional[str] = Field(None, description="U.S. taxpayer identification number (SSN or ITIN), if required")
+    foreign_tax_id: Optional[str] = Field(None, description="Foreign tax identifying number")
+    reference_number: Optional[str] = Field(None, description="Reference number(s)")
+    date_of_birth: Optional[date] = Field(None, description="Date of birth (MM-DD-YYYY)")
+    
+    # Part II: Claim of Tax Treaty Benefits
+    treaty_claimed: TaxTreatyClaimStatus = Field(TaxTreatyClaimStatus.NOT_CLAIMED, description="Whether treaty benefits are claimed")
+    treaty_country: Optional[str] = Field(None, description="Country with which the U.S. has an income tax treaty")
+    treaty_article: Optional[str] = Field(None, description="Treaty article addressing the income")
+    income_type: Optional[str] = Field(None, description="Type of income for which treaty benefits are claimed")
+    withholding_rate: Optional[float] = Field(None, description="Withholding rate claimed under treaty (%)")
+    special_conditions: Optional[str] = Field(None, description="Special conditions for the reduced rate")
+    
+    # Part III: Certification
+    certification_date: Optional[date] = Field(None, description="Date the form was signed")
+    capacity_of_signer: Optional[str] = Field(None, description="Capacity in which acting (if not the beneficial owner)")
+    signature_present: Optional[bool] = Field(None, description="Whether the form contains a signature")
+    
+    # Additional metadata
+    expiration_date: Optional[date] = Field(None, description="Expiration date of the form (typically 3 years from signing)")
+    withholding_agent: Optional[str] = Field(None, description="Name of withholding agent receiving the form")
+    purpose_of_submission: Optional[str] = Field(None, description="Purpose for which the form was submitted")
+    income_types_covered: Optional[List[str]] = Field(None, description="Types of income covered by this certificate")
+    submitted_via: Optional[str] = Field(None, description="How the form was submitted (e.g., mail, electronic)")
+    validation_status: Optional[str] = Field(None, description="Status of validation by the withholding agent")
+    
+    # Compliance tracking
+    renewal_reminder_date: Optional[date] = Field(None, description="Date when renewal reminder should be sent")
+    previous_version_date: Optional[date] = Field(None, description="Date of previous version of this form")
+    change_of_circumstance: Optional[bool] = Field(None, description="Whether there has been a change of circumstance requiring a new form")
+    change_details: Optional[str] = Field(None, description="Details of any change of circumstance")
