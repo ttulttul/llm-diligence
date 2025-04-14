@@ -64,6 +64,16 @@ class BenefitType(str, Enum):
     STOCK_OPTIONS = "stock options"
     EMPLOYEE_ASSISTANCE_PROGRAM = "employee assistance program"
 
+class VestingScheduleType(str, Enum):
+    """Types of vesting schedules for equity compensation"""
+    TIME_BASED = "time-based"
+    PERFORMANCE_BASED = "performance-based"
+    CLIFF = "cliff"
+    GRADED = "graded"
+    HYBRID = "hybrid"
+    IMMEDIATE = "immediate"
+    MILESTONE_BASED = "milestone-based"
+
 class LeaveType(str, Enum):
     """Types of employee leave"""
     VACATION = "vacation"
@@ -724,6 +734,42 @@ class GrievanceForm(HRDocument):
     follow_up_required: Optional[bool] = Field(None, description="Whether follow-up is required")
     follow_up_date: Optional[date] = Field(None, description="Date for follow-up, if required")
     case_closed_date: Optional[date] = Field(None, description="Date the case was closed")
+
+class StockOptionAgreement(EmploymentAgreement):
+    """A legal agreement granting an employee the right to purchase company stock at a specified price within a defined timeframe.
+    This model captures the comprehensive details of a stock option grant, including the number of shares,
+    exercise price, vesting schedule, and expiration terms. It provides a structured representation of
+    equity compensation arrangements, enabling analysis of vesting conditions, exercise provisions,
+    and tax implications for both incentive and non-qualified stock options."""
+    grant_date: date = Field(..., description="Date when the stock options were granted")
+    option_type: str = Field(..., description="Type of stock option (e.g., ISO, NSO, RSU)")
+    number_of_shares: int = Field(..., description="Total number of shares subject to the option")
+    exercise_price: float = Field(..., description="Price per share at which the option can be exercised")
+    currency: str = Field(..., description="Currency of the exercise price (e.g., USD, CAD)")
+    fair_market_value_at_grant: Optional[float] = Field(None, description="Fair market value per share at grant date")
+    vesting_commencement_date: date = Field(..., description="Date when the vesting period begins")
+    vesting_schedule_type: VestingScheduleType = Field(..., description="Type of vesting schedule")
+    vesting_period_years: float = Field(..., description="Total vesting period in years")
+    cliff_period_months: Optional[int] = Field(None, description="Cliff vesting period in months, if applicable")
+    vesting_frequency: str = Field(..., description="Frequency of vesting (e.g., monthly, quarterly, annually)")
+    expiration_date: date = Field(..., description="Date when the option expires")
+    post_termination_exercise_period_days: int = Field(..., description="Days to exercise after employment termination")
+    accelerated_vesting_provisions: Optional[str] = Field(None, description="Provisions for accelerated vesting")
+    transferability_restrictions: str = Field(..., description="Restrictions on transferring the options")
+    stockholder_rights: Optional[str] = Field(None, description="Rights as a stockholder before exercise")
+    tax_implications_summary: Optional[str] = Field(None, description="Summary of tax implications")
+    governing_plan: str = Field(..., description="Stock plan governing the option grant")
+    plan_administrator: str = Field(..., description="Administrator of the stock plan")
+    amendment_provisions: Optional[str] = Field(None, description="Provisions for amending the agreement")
+    special_terms: Optional[str] = Field(None, description="Any special or non-standard terms")
+    company_signature: bool = Field(..., description="Whether signed by company representative")
+    employee_signature: bool = Field(..., description="Whether signed by the employee")
+    signature_date: date = Field(..., description="Date of signature")
+    
+    class Config:
+        """Pydantic model configuration"""
+        title = "Stock Option Agreement"
+        description = "Agreement granting employee rights to purchase company stock"
 
 class ComplianceDocument(HRDocument):
     """A document related to workplace compliance with laws, regulations, or internal policies.
