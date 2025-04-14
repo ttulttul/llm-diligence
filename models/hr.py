@@ -200,7 +200,7 @@ class InterviewEvaluation(HRDocument):
     additional_comments: Optional[str] = Field(None, description="Additional comments or observations")
     next_steps: Optional[str] = Field(None, description="Recommended next steps in the process")
 
-class OfferLetter(Agreement):
+class OfferLetter(HRAgreement):
     """A formal letter extending an employment offer to a candidate.
     This model captures the details of an employment offer, including position, compensation,
     benefits, start date, and conditions of employment. It provides a structured representation
@@ -271,7 +271,7 @@ class OnboardingPacket(HRDocument):
     organizational_chart: Optional[bool] = Field(None, description="Whether an organizational chart is included")
     contact_information: Optional[Dict[str, str]] = Field(None, description="Key contact information")
 
-class ConfidentialityAgreement(Agreement):
+class ConfidentialityAgreement(HRAgreement):
     """A legal agreement requiring an employee to maintain confidentiality of proprietary information.
     This model captures the details of a confidentiality or non-disclosure agreement,
     including the types of information considered confidential, the duration of the
@@ -604,7 +604,7 @@ class TerminationLetter(HRDocument):
     delivery_date: date = Field(..., description="Date the notice was delivered")
     acknowledgment_signature: Optional[bool] = Field(None, description="Whether acknowledgment was signed")
 
-class SeveranceAgreement(Agreement):
+class SeveranceAgreement(HRAgreement):
     """A legal agreement outlining the terms of separation and any severance benefits.
     This model captures the comprehensive terms of a severance agreement,
     including financial compensation, benefits continuation, release of claims,
@@ -735,7 +735,7 @@ class GrievanceForm(HRDocument):
     follow_up_date: Optional[date] = Field(None, description="Date for follow-up, if required")
     case_closed_date: Optional[date] = Field(None, description="Date the case was closed")
 
-class StockOptionAgreement(EmploymentAgreement):
+class StockOptionAgreement(HRAgreement):
     """A legal agreement granting an employee the right to purchase company stock at a specified price within a defined timeframe.
     This model captures the comprehensive details of a stock option grant, including the number of shares,
     exercise price, vesting schedule, and expiration terms. It provides a structured representation of

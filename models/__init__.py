@@ -73,6 +73,8 @@ from .auto import AutoModel
 from .hr import (
     # Base HR document class
     HRDocument,
+    # Base HR agreement class
+    HRAgreement,
     
     # Enums
     EmploymentType,
