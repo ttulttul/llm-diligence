@@ -194,6 +194,8 @@ def main():
         parser.add_argument("--pdf", type=str, help="Path to the PDF file")
         parser.add_argument("--crawl-dir", type=str,
                            help="Recursively process all PDF files in the specified directory")
+        parser.add_argument("--crawl-limit", type=int, metavar="N",
+                           help="Limit the crawl to process at most N PDF files")
         parser.add_argument("--parallel", type=int, default=0, metavar="N",
                            help="Process files in parallel using N processes (0 for sequential processing)")
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
@@ -349,7 +351,8 @@ def main():
                 args.sqlite,
                 args.parallel,
                 classify_only,
-                prompt_extra=args.prompt_extra
+                prompt_extra=args.prompt_extra,
+                crawl_limit=args.crawl_limit
             )
         else:
             # Process a single file

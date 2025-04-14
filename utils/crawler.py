@@ -64,7 +64,8 @@ def process_directory(
     sqlite_path: Optional[str] = None,
     parallel: int = 0,
     classify_only: bool = False,
-    prompt_extra: Optional[str] = None
+    prompt_extra: Optional[str] = None,
+    crawl_limit: Optional[int] = None
 ):
     """
     Recursively process all PDF files in the specified directory.
@@ -95,8 +96,13 @@ def process_directory(
         logger.warning(f"No PDF files found in {crawl_dir}")
         yield (False, crawl_dir, None, ValueError(f"No PDF files found in {crawl_dir}"))
         return
-        
-    logger.info(f"Found {len(pdf_files)} PDF files to process")
+    
+    # Apply crawl limit if specified
+    if crawl_limit and crawl_limit > 0 and len(pdf_files) > crawl_limit:
+        logger.info(f"Limiting crawl to {crawl_limit} of {len(pdf_files)} PDF files found")
+        pdf_files = pdf_files[:crawl_limit]
+    else:
+        logger.info(f"Found {len(pdf_files)} PDF files to process")
     
     # Determine whether to use parallel processing
     if parallel > 0:
