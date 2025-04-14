@@ -154,6 +154,16 @@ class HumanResourcesDiligenceSubArea(str, Enum):
     WORKFORCE_DEMOGRAPHICS = "workforce_demographics"
     EMPLOYEE_TURNOVER = "employee_turnover"
     TALENT_ACQUISITION = "talent_acquisition"
+    RECRUITMENT_PROCESSES = "recruitment_processes"
+    ONBOARDING_PROCEDURES = "onboarding_procedures"
+    PERFORMANCE_MANAGEMENT = "performance_management"
+    TRAINING_DEVELOPMENT = "training_development"
+    SUCCESSION_PLANNING = "succession_planning"
+    TERMINATION_PROCESSES = "termination_processes"
+    EMPLOYEE_RELATIONS = "employee_relations"
+    COMPLIANCE_DOCUMENTATION = "compliance_documentation"
+    WORKPLACE_SAFETY = "workplace_safety"
+    DIVERSITY_INCLUSION = "diversity_inclusion"
 
 class ITDiligenceSubArea(str, Enum):
     """Sub-areas within Information Technology due diligence"""

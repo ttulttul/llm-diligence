@@ -70,3 +70,53 @@ from .data_sharing import (
     GDPRAgreementType
 )
 from .auto import AutoModel
+from .hr import (
+    # Base HR document class
+    HRDocument,
+    
+    # Enums
+    EmploymentType,
+    TerminationType,
+    PerformanceRating,
+    CompensationType,
+    BenefitType,
+    LeaveType,
+    
+    # Recruitment & Hiring
+    JobDescription,
+    Resume,
+    JobApplication,
+    InterviewEvaluation,
+    OfferLetter,
+    BackgroundCheckConsent,
+    
+    # Onboarding & Employment Agreements
+    OnboardingPacket,
+    ConfidentialityAgreement,
+    TaxForm,
+    
+    # Employee Policies & Procedures
+    EmployeeHandbook,
+    WorkplacePolicy,
+    CodeOfConduct,
+    
+    # Performance & Development
+    PerformanceAppraisal,
+    PerformanceImprovementPlan,
+    TrainingDevelopmentPlan,
+    
+    # Compensation & Benefits
+    CompensationStructure,
+    BenefitsGuide,
+    BenefitsEnrollmentForm,
+    
+    # Separation & Offboarding
+    TerminationLetter,
+    SeveranceAgreement,
+    ExitInterviewForm,
+    
+    # Miscellaneous Compliance & Records
+    EmployeeRecord,
+    GrievanceForm,
+    ComplianceDocument as HRComplianceDocument
+)
