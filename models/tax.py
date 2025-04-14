@@ -61,7 +61,7 @@ class TaxIncentiveType(str, Enum):
     OTHER = "other tax incentive"
 
 class TaxDocument(DiligentizerModel):
-    """Base class for all tax-related documents"""
+    """Base class for all tax-related documents such as documents from Canada Revenue Agency or the IRS"""
     tax_year: Optional[str] = Field(None, description="The tax year(s) the document pertains to")
     company_name: Optional[str] = Field(None, description="Name of the company or entity")
     tax_id_number: Optional[str] = Field(None, description="Tax identification number (e.g., EIN, TIN)")
@@ -102,7 +102,7 @@ class AnalyticalDocument(TaxDocument):
     limitations: Optional[List[str]] = Field(None, description="Limitations of the analysis")
 
 class AuthorityDocument(TaxDocument):
-    """Base class for documents issued by tax authorities"""
+    """A document issued by a tax authority such as Canada Revenue Agency or the IRS"""
     issuing_authority: Optional[str] = Field(None, description="Authority that issued the document")
     authority_reference_number: Optional[str] = Field(None, description="Reference number assigned by the authority")
     issuance_date: Optional[date] = Field(None, description="Date the document was issued")
@@ -242,7 +242,7 @@ class TaxDispute(TaxDocument):
     probability_of_favorable_outcome: Optional[float] = Field(None, description="Estimated probability of favorable outcome (0-1)")
 
 class TaxOpinion(AdvisoryDocument):
-    """A tax opinion or advice document"""
+    """A tax opinion or advice document from a tax professional"""
     opinion_provider: Optional[str] = Field(None, description="Firm or professional providing the opinion")
     opinion_type: Optional[str] = Field(None, description="Type of tax opinion (e.g., 'Will Opinion', 'Should Opinion', 'More Likely Than Not')")
     confidence_level: Optional[float] = Field(None, description="Numerical confidence level (0-1) if provided")
@@ -391,7 +391,7 @@ class InformationRequest(BaseModel):
     notes: Optional[str] = Field(None, description="Additional notes about the request")
 
 class TaxAudit(AuthorityDocument):
-    """Document related to a tax audit or examination"""
+    """Document related to a tax audit, review, or examination by a taxation authority like Canada Revenue Agency or the IRS"""
     audit_id: Optional[str] = Field(None, description="Identification number of the audit")
     auditing_authority: Optional[str] = Field(None, description="Tax authority conducting the audit")
     tax_types: List[TaxType] = Field(default_factory=list, description="Types of taxes being audited")
