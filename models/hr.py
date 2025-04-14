@@ -5,6 +5,18 @@ from datetime import date, datetime
 from .base import DiligentizerModel
 from .contracts import EmploymentAgreement, Agreement
 
+# Base class for HR-related agreements
+class HRAgreement(Agreement):
+    """A legal agreement specifically related to human resources matters.
+    This model serves as the foundation for all HR-related agreements, capturing essential
+    elements common to employment contracts, confidentiality agreements, stock options,
+    and other HR legal documents. It provides a structured representation of agreements
+    that govern the employer-employee relationship."""
+    employer_name: Optional[str] = Field(None, description="Name of the employer entity")
+    employee_name: Optional[str] = Field(None, description="Name of the employee")
+    employment_relationship: Optional[str] = Field(None, description="Nature of the employment relationship")
+    hr_document_type: Optional[str] = Field(None, description="Type of HR agreement document")
+
 # Enums for HR document types
 
 class EmploymentType(str, Enum):
