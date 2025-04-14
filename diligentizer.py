@@ -383,7 +383,7 @@ def main():
                 csv_file = open(args.classify_to_csv, 'w', newline='')
                 csv_writer = csv.writer(csv_file)
                 # Write header row
-                csv_writer.writerow(['file_path', 'model_name'])
+                csv_writer.writerow(['file_path', 'model_name', 'selection_path'])
                 logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
                 print(f"Classification results will be saved to: {args.classify_to_csv}")
             except Exception as e:
@@ -421,7 +421,7 @@ def main():
                 
                 # Write classification result to CSV if requested
                 if args.classify_only and csv_writer and hasattr(result, 'model_name'):
-                    csv_writer.writerow([file_path, result.model_name])
+                    csv_writer.writerow([file_path, result.model_name, result.selection_path])
                 # If this is an AutoModel result with a selection path, log it
                 elif hasattr(result, 'selection_path') and result.selection_path:
                     path_str = " -> ".join(result.selection_path)
