@@ -59,14 +59,14 @@ class ShareTransferRestriction(BaseModel):
     approval_required_by: Optional[List[str]] = Field(None, description="Whose approval is required for transfers")
 
 class CorporateDocument(DiligentizerModel):
-    """Base class for all corporate entity documents"""
+    """A document related to a corporate entity's formation, governance, or operations"""
     company_name: Optional[str] = Field(None, description="Name of the company")
     jurisdiction: Optional[CorporateJurisdiction] = Field(None, description="Jurisdiction of the document")
     document_date: Optional[date] = Field(None, description="Date of the document")
     document_type: Optional[str] = Field(None, description="Type of corporate document")
 
 class CorporateRegistrationDocument(CorporateDocument):
-    """Base class for entity registration documents"""
+    """A document filed with government authorities to register or incorporate a business entity"""
     registration_number: Optional[str] = Field(None, description="Official registration or file number")
     registered_address: Optional[str] = Field(None, description="Registered office address")
     entity_type: Optional[str] = Field(None, description="Type of entity (e.g., Corporation, LLC)")
@@ -74,7 +74,7 @@ class CorporateRegistrationDocument(CorporateDocument):
     status: Optional[str] = Field(None, description="Status of the entity (e.g., Active, Dissolved)")
 
 class ArticlesOfIncorporation(CorporateRegistrationDocument):
-    """Articles of Incorporation or similar founding document"""
+    """A founding document filed with government authorities that establishes a corporation's existence, defining its share structure, director requirements, and other fundamental characteristics"""
     incorporators: List[IncorporatorInfo] = Field(default_factory=list, description="Incorporators/founders of the entity")
     authorized_shares: Optional[Dict[str, Union[int, str]]] = Field(None, description="Authorized share structure")
     share_classes: List[ShareRights] = Field(default_factory=list, description="Share classes with their rights")
@@ -88,14 +88,14 @@ class ArticlesOfIncorporation(CorporateRegistrationDocument):
     pre_organization_shares: Optional[bool] = Field(None, description="Whether pre-organization shares were authorized")
 
 class CanadianArticlesOfIncorporation(ArticlesOfIncorporation):
-    """Canadian Articles of Incorporation (federal or provincial)"""
+    """A founding document filed with Canadian federal or provincial authorities that establishes a corporation under Canadian law, including specific Canadian requirements like bilingual names and director residency provisions"""
     cbca_governed: Optional[bool] = Field(None, description="Whether governed by Canada Business Corporations Act")
     french_name: Optional[str] = Field(None, description="French version of the company name if applicable")
     registered_office_province: Optional[str] = Field(None, description="Province where registered office is located")
     director_residency_compliant: Optional[bool] = Field(None, description="Whether director Canadian residency requirements are met")
 
 class USArticlesOfIncorporation(ArticlesOfIncorporation):
-    """US Articles of Incorporation or Certificate of Incorporation"""
+    """A founding document filed with US state authorities that establishes a corporation under state law, including US-specific provisions like benefit corporation status and franchise tax requirements"""
     state_of_incorporation: Optional[str] = Field(None, description="State of incorporation")
     close_corporation: Optional[bool] = Field(None, description="Whether incorporated as a close corporation")
     benefit_corporation: Optional[bool] = Field(None, description="Whether incorporated as a benefit corporation")
@@ -104,7 +104,7 @@ class USArticlesOfIncorporation(ArticlesOfIncorporation):
     limited_liability_statement: Optional[bool] = Field(None, description="Whether limited liability statement is included")
 
 class CertificateOfIncorporation(CorporateRegistrationDocument):
-    """Certificate issued by authority confirming incorporation"""
+    """An official document issued by a government authority confirming that a corporation has been legally formed and registered, often containing the corporation number and effective date of incorporation"""
     issuing_authority: Optional[str] = Field(None, description="Government body that issued the certificate")
     corporation_number: Optional[str] = Field(None, description="Official corporation number")
     effective_date: Optional[date] = Field(None, description="Effective date of incorporation if different from registration")
@@ -112,7 +112,7 @@ class CertificateOfIncorporation(CorporateRegistrationDocument):
     certificate_issued_date: Optional[date] = Field(None, description="Date the certificate was issued")
 
 class CorporateAmendment(CorporateRegistrationDocument):
-    """Amendment to corporate registration or structure"""
+    """A document filed with government authorities to change a corporation's registered information, such as its name, share structure, or other fundamental characteristics"""
     amendment_type: Optional[str] = Field(None, description="Type of amendment (e.g., name change, share structure)")
     amendment_description: Optional[str] = Field(None, description="Description of the amendment")
     previous_name: Optional[str] = Field(None, description="Previous name if this is a name change")
@@ -122,7 +122,7 @@ class CorporateAmendment(CorporateRegistrationDocument):
     approval_votes_percentage: Optional[float] = Field(None, description="Percentage of votes approving the amendment")
 
 class ArticlesOfOrganization(CorporateRegistrationDocument):
-    """Articles of Organization for LLC or similar entity"""
+    """A founding document filed with government authorities that establishes a limited liability company (LLC), defining its management structure, member information, and operational parameters"""
     members: List[str] = Field(default_factory=list, description="Initial members of the LLC")
     managers: List[str] = Field(default_factory=list, description="Managers of the LLC if manager-managed")
     member_managed: Optional[bool] = Field(None, description="Whether the LLC is member-managed")
@@ -131,7 +131,7 @@ class ArticlesOfOrganization(CorporateRegistrationDocument):
     dissolution_terms: Optional[str] = Field(None, description="Terms for dissolution")
 
 class CorporateBylaws(CorporateDocument):
-    """Corporate bylaws document"""
+    """An internal governance document that establishes the rules and procedures for operating a corporation, including meeting requirements, officer positions, and decision-making processes"""
     adoption_date: Optional[date] = Field(None, description="Date bylaws were adopted")
     meeting_requirements: Optional[Dict[str, str]] = Field(None, description="Requirements for corporate meetings")
     officer_positions: Optional[List[str]] = Field(None, description="Officer positions established")
@@ -142,7 +142,7 @@ class CorporateBylaws(CorporateDocument):
     indemnification_provisions: Optional[str] = Field(None, description="Indemnification provisions for directors/officers")
 
 class AnnualReport(CorporateDocument):
-    """Annual report or return filed with corporate registry"""
+    """A periodic document filed with government authorities to update and confirm a corporation's current information, including directors, registered address, and business activities"""
     filing_year: Optional[str] = Field(None, description="Year for which the report is filed")
     filing_date: Optional[date] = Field(None, description="Date the report was filed")
     current_directors: List[DirectorInfo] = Field(default_factory=list, description="List of current directors")
@@ -154,7 +154,7 @@ class AnnualReport(CorporateDocument):
     annual_fee_paid: Optional[bool] = Field(None, description="Whether annual fee was paid")
 
 class ShareholderAgreement(CorporateDocument):
-    """Shareholder agreement document"""
+    """A contract between shareholders of a corporation that establishes their rights and obligations, including share transfer restrictions, voting arrangements, and dispute resolution mechanisms"""
     parties: List[str] = Field(default_factory=list, description="Parties to the agreement")
     effective_date: Optional[date] = Field(None, description="Effective date of the agreement")
     key_provisions: Optional[List[str]] = Field(None, description="Key provisions of the agreement")
@@ -168,7 +168,7 @@ class ShareholderAgreement(CorporateDocument):
     termination_provisions: Optional[str] = Field(None, description="Provisions for termination")
 
 class DirectorResolution(CorporateDocument):
-    """Directors' resolution document"""
+    """A formal record of decisions made by a corporation's board of directors, documenting approved actions and the voting results"""
     resolution_type: Optional[str] = Field(None, description="Type of resolution (ordinary, special, consent)")
     resolution_date: Optional[date] = Field(None, description="Date resolution was passed")
     resolution_text: Optional[str] = Field(None, description="Text of the resolution")
@@ -179,7 +179,7 @@ class DirectorResolution(CorporateDocument):
     voting_results: Optional[Dict[str, int]] = Field(None, description="Results of the vote if not unanimous")
 
 class ShareholderResolution(CorporateDocument):
-    """Shareholders' resolution document"""
+    """A formal record of decisions made by a corporation's shareholders, documenting approved actions that require shareholder consent under corporate law or the corporation's bylaws"""
     resolution_type: Optional[str] = Field(None, description="Type of resolution (ordinary, special)")
     resolution_date: Optional[date] = Field(None, description="Date resolution was passed")
     resolution_text: Optional[str] = Field(None, description="Text of the resolution")
@@ -190,7 +190,7 @@ class ShareholderResolution(CorporateDocument):
     unanimous: Optional[bool] = Field(None, description="Whether resolution was passed unanimously")
 
 class CorporateMinutes(CorporateDocument):
-    """Minutes of corporate meetings"""
+    """A written record of proceedings at a corporate meeting, documenting attendees, discussions, and decisions made during board or shareholder meetings"""
     meeting_type: Optional[str] = Field(None, description="Type of meeting (board, annual, special)")
     meeting_date: Optional[date] = Field(None, description="Date of the meeting")
     meeting_location: Optional[str] = Field(None, description="Location of the meeting")
@@ -203,7 +203,7 @@ class CorporateMinutes(CorporateDocument):
     next_meeting_date: Optional[date] = Field(None, description="Date of next scheduled meeting")
 
 class ShareCertificate(CorporateDocument):
-    """Share certificate document"""
+    """A legal document issued by a corporation that certifies ownership of a specific number of shares by a shareholder, including details about share class and any transfer restrictions"""
     certificate_number: Optional[str] = Field(None, description="Certificate number")
     shareholder_name: Optional[str] = Field(None, description="Name of the shareholder")
     share_class: Optional[ShareClass] = Field(None, description="Class of shares")
@@ -215,7 +215,7 @@ class ShareCertificate(CorporateDocument):
     certificate_cancelled: Optional[bool] = Field(None, description="Whether certificate has been cancelled")
 
 class DispositionOfBusinessDocument(CorporateDocument):
-    """Document related to disposition of business assets or shares"""
+    """A document that records the sale, transfer, or other disposition of a corporation's assets or shares, including transaction details, approvals, and conditions"""
     transaction_type: Optional[str] = Field(None, description="Type of transaction (asset sale, share sale, merger)")
     transaction_date: Optional[date] = Field(None, description="Date of the transaction")
     parties: List[str] = Field(default_factory=list, description="Parties to the transaction")
@@ -229,7 +229,7 @@ class DispositionOfBusinessDocument(CorporateDocument):
     closing_conditions: Optional[List[str]] = Field(None, description="Conditions for closing")
 
 class CorporateDissolution(CorporateDocument):
-    """Document related to corporate dissolution or winding up"""
+    """A document that records the termination of a corporation's legal existence, including the process of winding up affairs, addressing liabilities, and distributing remaining assets"""
     dissolution_type: Optional[str] = Field(None, description="Type of dissolution (voluntary, involuntary)")
     dissolution_date: Optional[date] = Field(None, description="Effective date of dissolution")
     reason_for_dissolution: Optional[str] = Field(None, description="Reason for dissolution")
