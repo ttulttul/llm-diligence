@@ -51,7 +51,7 @@ class HousingStatusType(str, Enum):
 
 class RequestedLoanProduct(BaseModel):
     """Details of a specific loan product requested."""
-    product_name: str = Field(..., description="Name of the requested loan product (e.g., 'RBC Royal Bank VISA* CreditLine for small business')")
+    product_name: str = Field(..., description="Name of the requested loan product (e.g., 'VISA* CreditLine for small business')")
     requested_amount: Optional[float] = Field(None, description="Specific amount requested for this product")
     maximum_amount: Optional[float] = Field(None, description="Maximum allowable amount for this product type, if stated on the form")
     is_selected: bool = Field(False, description="Whether this product was checked/selected on the application")
@@ -96,9 +96,9 @@ class ApplicantOwnerInfo(AgreementParty):
     """Detailed information about an owner/partner applying for the loan."""
     party_type: Optional[str] = Field("Owner/Partner", description="Type of party (always Owner/Partner for this context)") # Override from base
     party_name: Optional[str] = Field(None, description="Full name of the owner/partner") # Explicitly add description
-    is_rbc_customer: Optional[bool] = Field(None, description="Whether the owner is an existing RBC Royal Bank/Royal Trust customer")
-    rbc_customer_since: Optional[str] = Field(None, description="Date (m/d/y) the owner became an RBC customer, if applicable (kept as string due to ambiguous format)")
-    rbc_client_card_number: Optional[str] = Field(None, description="Owner's RBC Client Card number, if applicable (potentially masked)")
+    is_existing_customer: Optional[bool] = Field(None, description="Whether the owner is an existing customer of the financial institution")
+    customer_since: Optional[str] = Field(None, description="Date (m/d/y) the owner became a customer, if applicable (kept as string due to ambiguous format)")
+    client_card_number: Optional[str] = Field(None, description="Owner's client card number, if applicable (potentially masked)")
     party_address: Optional[str] = Field(None, description="Owner's current home address") # Inherited from AgreementParty
     previous_home_address: Optional[str] = Field(None, description="Previous home address if at current address less than 2 years")
     birth_date: Optional[date] = Field(None, description="Owner's date of birth")
@@ -133,10 +133,10 @@ class CreditCardApplication(FinancialDocument):
     correspondence_address_preference: Optional[str] = Field(None, description="Preferred mailing address for correspondence ('Business' or 'Home')")
     referred_by_third_party: Optional[bool] = Field(None, description="Was the application referred by a third party?")
     referrer_name: Optional[str] = Field(None, description="Name of the referrer, if applicable")
-    is_existing_rbc_client: Optional[bool] = Field(None, description="Is the Business currently a client of RBC Royal Bank?")
-    rbc_account_number: Optional[str] = Field(None, description="Business Account Number with RBC, if applicable")
-    rbc_branch_transit: Optional[str] = Field(None, description="Branch Transit number for the RBC account, if applicable")
-    primary_financial_institution_details: Optional[str] = Field(None, description="Name and address of primary financial institution if not an RBC client")
+    is_existing_client: Optional[bool] = Field(None, description="Is the Business currently a client of the financial institution?")
+    account_number: Optional[str] = Field(None, description="Business Account Number with the financial institution, if applicable")
+    branch_transit: Optional[str] = Field(None, description="Branch Transit number for the account, if applicable")
+    primary_financial_institution_details: Optional[str] = Field(None, description="Name and address of primary financial institution if not a client")
 
     # Section 2(ii): Business Information
     main_business_type: Optional[BusinessType] = Field(None, description="Main type of business activity")
@@ -174,7 +174,7 @@ class CreditCardApplication(FinancialDocument):
 
 
     # Meta fields from base class customization
-    currency: Optional[str] = Field("CAD", description="Currency used in the financial figures (Assumed CAD for RBC Canada)") # Override default None
+    currency: Optional[str] = Field("CAD", description="Currency used in the financial figures (Default: CAD)") # Override default None
     fiscal_year: Optional[str] = Field(None, description="Fiscal year corresponding to the financial summary, if derivable") # Inherited, maybe useful
 
     # --- Validators for Date Parsing ---
