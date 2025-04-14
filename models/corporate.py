@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any, Union
 from pydantic import Field, BaseModel
 from datetime import date, datetime
 from .base import DiligentizerModel
+from .contracts import Agreement
 
 class CorporateJurisdiction(str, Enum):
     """Common corporate jurisdictions"""
@@ -77,7 +78,7 @@ class CorporateRegistrationDocument(CorporateDocument):
     registration_date: Optional[date] = Field(None, description="Date of registration or incorporation")
     status: Optional[str] = Field(None, description="Status of the entity (e.g., Active, Dissolved)")
 
-class ArticlesOfIncorporation(CorporateRegistrationDocument):
+class ArticlesOfIncorporation(CorporateRegistrationDocument, Agreement):
     """A founding document filed with government authorities that establishes a corporation's existence, defining its share structure, director requirements, and other fundamental characteristics"""
     incorporators: List[IncorporatorInfo] = Field(default_factory=list, description="Incorporators/founders of the entity")
     authorized_shares: Optional[Dict[str, Union[int, str]]] = Field(None, description="Authorized share structure")
@@ -157,7 +158,7 @@ class AnnualReport(CorporateDocument):
     shares_issued: Optional[Dict[str, int]] = Field(None, description="Number of shares issued by class")
     annual_fee_paid: Optional[bool] = Field(None, description="Whether annual fee was paid")
 
-class ShareholderAgreement(CorporateDocument):
+class ShareholderAgreement(CorporateDocument, Agreement):
     """A contract between shareholders of a corporation that establishes their rights and obligations, including share transfer restrictions, voting arrangements, and dispute resolution mechanisms"""
     parties: List[str] = Field(default_factory=list, description="Parties to the agreement")
     effective_date: Optional[date] = Field(None, description="Effective date of the agreement")

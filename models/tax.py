@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import Field, BaseModel
 from datetime import date, datetime
 from .base import DiligentizerModel, FinancialDocument
+from .contracts import Agreement
 
 class TaxJurisdiction(str, Enum):
     """Types of tax jurisdictions"""
@@ -298,7 +299,7 @@ class TaxNotice(TaxAuthorityDocument):
     resolution_date: Optional[date] = Field(None, description="Date the matter was resolved")
     resolution_details: Optional[str] = Field(None, description="Details of how the matter was resolved")
 
-class TaxSettlement(TaxAuthorityDocument):
+class TaxSettlement(TaxAuthorityDocument, Agreement):
     """Document related to a tax settlement with authorities"""
     settlement_type: Optional[str] = Field(None, description="Type of settlement")
     original_disputed_amount: Optional[float] = Field(None, description="Original amount in dispute")
