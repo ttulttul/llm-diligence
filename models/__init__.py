@@ -15,10 +15,9 @@ from .contracts import (
     AgreementParty,
     CommercialAgreement,
     CustomerAgreement,
-    LicenseAgreement,
-    EmploymentAgreement
+    LicenseAgreement
 )
-from .contracts import EmploymentContract
+from .hr import EmploymentAgreement, EmploymentContract
 from .financial import FinancialStatement
 from .tax import (
     TaxDocument, ComplianceDocument, AnalyticalDocument, TaxAuthorityDocument,

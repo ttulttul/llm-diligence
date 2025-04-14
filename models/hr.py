@@ -1,9 +1,10 @@
 from enum import Enum
 from typing import Optional, List, Dict, Any, Union
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, field_validator
 from datetime import date, datetime
+import re
 from .base import DiligentizerModel
-from .contracts import EmploymentAgreement, Agreement
+from .contracts import Agreement
 
 # Base class for HR-related agreements
 class HRAgreement(Agreement):
