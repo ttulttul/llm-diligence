@@ -9,10 +9,12 @@ class ModelEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-from .base import (
-    DiligentizerModel, 
-    Agreement, 
-    CustomerAgreement, 
+from .base import DiligentizerModel
+from .contracts import (
+    Agreement,
+    AgreementParty,
+    CommercialAgreement,
+    CustomerAgreement,
     LicenseAgreement,
     EmploymentAgreement
 )
