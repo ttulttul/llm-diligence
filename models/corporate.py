@@ -59,7 +59,11 @@ class ShareTransferRestriction(BaseModel):
     approval_required_by: Optional[List[str]] = Field(None, description="Whose approval is required for transfers")
 
 class CorporateDocument(DiligentizerModel):
-    """A document related to a corporate entity's formation, governance, or operations"""
+    """A document related to a corporate entity's formation, governance, or operations.
+    This model serves as the foundation for all corporate document types, capturing essential
+    information about corporate entities including company name, jurisdiction, document date,
+    and document type. It provides the base structure for more specialized corporate document
+    models like articles of incorporation, bylaws, and corporate resolutions."""
     company_name: Optional[str] = Field(None, description="Name of the company")
     jurisdiction: Optional[CorporateJurisdiction] = Field(None, description="Jurisdiction of the document")
     document_date: Optional[date] = Field(None, description="Date of the document")

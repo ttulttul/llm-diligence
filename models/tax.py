@@ -61,7 +61,13 @@ class TaxIncentiveType(str, Enum):
     OTHER = "other tax incentive"
 
 class TaxDocument(DiligentizerModel):
-    """A document related to taxation, such as documents from Canada Revenue Agency or the IRS"""
+    """A document related to taxation, such as documents from Canada Revenue Agency or the IRS.
+    
+    This model serves as the foundation for all tax-related document types, capturing essential
+    metadata such as tax year, jurisdiction, document date, and document type. It provides a
+    structured representation of tax documents from various authorities, enabling systematic
+    analysis and organization of tax-related information across different jurisdictions and
+    time periods."""
     tax_year: Optional[str] = Field(None, description="The tax year(s) the document pertains to")
     company_name: Optional[str] = Field(None, description="Name of the company or entity")
     tax_id_number: Optional[str] = Field(None, description="Tax identification number (e.g., EIN, TIN)")

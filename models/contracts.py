@@ -36,7 +36,11 @@ class RestrictiveCovenants(BaseModel):
     intellectual_property_assignment: Optional[bool] = Field(None, description="Indicates if there's a clause assigning IP created during employment to the employer.")
 
 class EmploymentContract(EmploymentAgreement):
-    """Represents key details extracted from an employment agreement."""
+    """Represents key details extracted from an employment agreement.
+    This model captures the comprehensive terms of employment between an employer and employee,
+    including job details, compensation structure, benefits, termination provisions, and restrictive
+    covenants. It provides a structured representation of the rights, obligations, and conditions
+    that govern the employment relationship, facilitating analysis of employment terms and conditions."""
     job_title: Optional[str] = Field(None, description="The employee's job title.")
     
     agreement_date: Optional[date] = Field(None, description="The date the agreement was signed or executed.")

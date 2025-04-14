@@ -182,11 +182,15 @@ class IPDiligenceSubArea(str, Enum):
     OPEN_SOURCE = "open_source"
 
 class DiligenceAreaMapping(DiligentizerModel):
-    """
-    A comprehensive mapping of due diligence areas and their sub-areas.
+    """A comprehensive mapping of due diligence areas and their sub-areas.
     This model provides a structured categorization of all possible due diligence topics
     that might be relevant in M&A, investment, or compliance contexts.
-    """
+    
+    It organizes the complex landscape of due diligence into logical categories and subcategories,
+    enabling systematic assessment across business, financial, legal, technical, and operational
+    domains. The model supports document classification, due diligence planning, and comprehensive
+    coverage tracking, ensuring thorough examination of all relevant areas during transaction
+    assessment or compliance reviews."""
     
     # Main diligence areas with their sub-areas
     business: List[BusinessDiligenceSubArea] = Field(

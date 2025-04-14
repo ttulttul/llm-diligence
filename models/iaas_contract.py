@@ -50,10 +50,14 @@ class DataProcessingScope(str, Enum):
     LIMITED_SUPPORT = "as necessary for providing technical support requested by customer"
 
 class IaasCustomerAgreement(CloudServiceAgreement):
-    """
-    Represents the key concepts extracted from a generic Infrastructure as a Service (IaaS) Customer Agreement.
+    """Represents the key concepts extracted from a generic Infrastructure as a Service (IaaS) Customer Agreement.
     Aims to be provider-agnostic (e.g., applicable to AWS, Azure, GCP, etc.).
-    """
+    
+    This comprehensive model captures the complex legal and commercial terms of IaaS agreements,
+    including service definitions, provider/customer responsibilities, payment terms, service levels,
+    data processing provisions, intellectual property rights, liability limitations, and termination
+    conditions. It enables detailed analysis of cloud infrastructure contracts across different
+    providers, facilitating comparison, risk assessment, and compliance verification."""
     # Parties and Agreement Setup
     customer_entity_description: str = Field(..., description="Description of the customer entity (e.g., 'you or the entity you represent').")
     customer_account_country: Optional[str] = Field(None, description="The country associated with the customer's account, often determining the specific provider entity, governing law, and taxes.")

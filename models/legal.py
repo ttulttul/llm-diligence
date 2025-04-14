@@ -141,6 +141,11 @@ class AssignmentProvisionType(str, Enum):
     ACQUIRER_SPECIFIC = "specific acquirer restrictions"
 
 class SoftwareLicenseAgreement(LicenseAgreement):
+    """A comprehensive legal agreement governing the use of software products, establishing the rights and obligations
+    between the software provider (licensor) and the user (licensee). This model captures detailed aspects of software
+    licensing including grant scope, usage restrictions, payment terms, intellectual property rights, warranties,
+    liability limitations, and termination conditions. It provides a structured representation of the complex legal
+    and commercial terms that define how software can be used, distributed, and supported."""
     # Parties and basic term information
     start_date: str = Field(..., description="The start date of the license agreement")
     end_date: str = Field(..., description="The end date of the license agreement")

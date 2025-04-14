@@ -14,7 +14,11 @@ class CloudServiceType(str, Enum):
     CAAS = "container as a service"
 
 class CloudServiceAgreement(CustomerAgreement):
-    """Base class for all cloud service agreements"""
+    """Base class for all cloud service agreements.
+    This model represents contracts governing the provision of cloud-based services, capturing
+    essential elements such as service type, SLA terms, data handling provisions, and termination
+    conditions. It serves as the foundation for more specialized cloud service agreement types
+    like IaaS, PaaS, and SaaS contracts."""
     service_type: CloudServiceType = Field(..., description="The type of cloud service provided")
     service_description: str = Field(..., description="Description of the cloud services provided")
     service_level_agreement_exists: bool = Field(False, description="Whether a service level agreement exists")

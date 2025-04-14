@@ -13,14 +13,21 @@ from utils.llm import cached_llm_invoke
 from utils import logger
 
 class AutoDocumentClassification(DiligentizerModel):
-    """Model used to receive the selected model name from the LLM."""
+    """Model used to receive the selected model name from the LLM.
+    This model serves as an interface for the document classification process, capturing the LLM's
+    determination of the most appropriate document model to use for a given document. It enables
+    the automatic routing of documents to specialized analysis models based on their content and structure."""
     model_name: str = Field(..., description="The name of the most appropriate model for this document")
 
     class Config:
         extra = 'allow'
 
 class AutoModel(DiligentizerModel):
-    """Automatically selects the most appropriate model to analyze the document."""
+    """Automatically selects the most appropriate model to analyze the document.
+    This intelligent model implements a hierarchical document classification system that progressively
+    narrows down the document type through multiple phases of analysis. It manages the selection process,
+    tracks the decision path, and coordinates with the chosen specialized model to perform the final
+    document analysis, enabling accurate and efficient automated document processing."""
     
     chosen_model_name: str = Field(..., description="The name of the model chosen by the LLM")
     chosen_model_description: str = Field("", description="The description of the chosen model")
