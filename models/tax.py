@@ -101,8 +101,8 @@ class AnalyticalDocument(TaxDocument):
     data_sources: Optional[List[str]] = Field(None, description="Sources of data used in the analysis")
     limitations: Optional[List[str]] = Field(None, description="Limitations of the analysis")
 
-class AuthorityDocument(TaxDocument):
-    """A document issued by a tax authority such as Canada Revenue Agency or the IRS"""
+class TaxAuthorityDocument(TaxDocument):
+    """A document such as a letter, notice, audit result, etc. issued by a tax authority such as Canada Revenue Agency or the IRS"""
     issuing_authority: Optional[str] = Field(None, description="Authority that issued the document")
     authority_reference_number: Optional[str] = Field(None, description="Reference number assigned by the authority")
     issuance_date: Optional[date] = Field(None, description="Date the document was issued")
@@ -113,8 +113,12 @@ class AuthorityDocument(TaxDocument):
     delivery_method: Optional[str] = Field(None, description="How the document was delivered")
     receipt_date: Optional[date] = Field(None, description="Date the document was received")
 
-class AdvisoryDocument(TaxDocument):
-    """A document providing tax advice, guidance, or recommendations"""
+class ProfessionalTaxAdvisoryDocument(TaxDocument):
+    """A document written by a tax professional providing tax advice, guidance,
+    or recommendations from a professional (not a tax authority) For avoidance
+    of doubt: this model is NOT appropriate for a document produced by a tax
+    authority such as Canada Revenue Agency or the IRS. It is for documents
+    from tax professionals like accountants, KPMG, etc."""
     advisor: Optional[str] = Field(None, description="Advisor who provided the advice")
     advisor_firm: Optional[str] = Field(None, description="Firm of the advisor")
     advice_date: Optional[date] = Field(None, description="Date the advice was provided")
@@ -204,7 +208,7 @@ class PassthroughTaxReturn(TaxReturn):
     ownership_changes: Optional[bool] = Field(None, description="Whether ownership changes occurred during tax year")
     major_owners: Optional[List[Dict[str, Any]]] = Field(None, description="Information about major owners (>5%)")
 
-class TaxAssessment(AuthorityDocument):
+class TaxAssessment(TaxAuthorityDocument):
     """Tax assessment or notice from a tax authority"""
     assessment_id: Optional[str] = Field(None, description="Identification number of the assessment")
     tax_type: TaxType = Field(..., description="Type of tax being assessed")
@@ -241,8 +245,8 @@ class TaxDispute(TaxDocument):
     expected_resolution_date: Optional[date] = Field(None, description="Expected resolution date")
     probability_of_favorable_outcome: Optional[float] = Field(None, description="Estimated probability of favorable outcome (0-1)")
 
-class TaxOpinion(AdvisoryDocument):
-    """A tax opinion or advice document from a tax professional"""
+class ProfessionalTaxOpinion(ProfessionalTaxAdvisoryDocument):
+    """A tax opinion or advice document from a tax professional (not a tax authority)"""
     opinion_provider: Optional[str] = Field(None, description="Firm or professional providing the opinion")
     opinion_type: Optional[str] = Field(None, description="Type of tax opinion (e.g., 'Will Opinion', 'Should Opinion', 'More Likely Than Not')")
     confidence_level: Optional[float] = Field(None, description="Numerical confidence level (0-1) if provided")
@@ -258,7 +262,7 @@ class TaxOpinion(AdvisoryDocument):
     transaction_date: Optional[date] = Field(None, description="Date of the transaction if applicable")
     penalty_protection_intended: Optional[bool] = Field(None, description="Whether the opinion is intended to provide penalty protection")
 
-class TaxRuling(AuthorityDocument):
+class TaxRuling(TaxAuthorityDocument):
     """A private tax ruling or determination letter"""
     ruling_id: Optional[str] = Field(None, description="Identification number of the ruling")
     ruling_type: Optional[str] = Field(None, description="Type of ruling (e.g., Private Letter Ruling, Technical Advice Memorandum)")
@@ -275,7 +279,7 @@ class TaxRuling(AuthorityDocument):
     related_transactions: Optional[List[str]] = Field(None, description="Transactions to which the ruling applies")
 
 # Additional specialized tax document types
-class TaxNotice(AuthorityDocument):
+class TaxNotice(TaxAuthorityDocument):
     """Notice received from a tax authority"""
     notice_type: Optional[str] = Field(None, description="Type of notice (e.g., Information Request, Deficiency Notice)")
     notice_purpose: Optional[str] = Field(None, description="Purpose of the notice")
@@ -288,7 +292,7 @@ class TaxNotice(AuthorityDocument):
     resolution_date: Optional[date] = Field(None, description="Date the matter was resolved")
     resolution_details: Optional[str] = Field(None, description="Details of how the matter was resolved")
 
-class TaxSettlement(AuthorityDocument):
+class TaxSettlement(TaxAuthorityDocument):
     """Document related to a tax settlement with authorities"""
     settlement_type: Optional[str] = Field(None, description="Type of settlement")
     original_disputed_amount: Optional[float] = Field(None, description="Original amount in dispute")
@@ -390,7 +394,7 @@ class InformationRequest(BaseModel):
     follow_up_requests: Optional[List[str]] = Field(None, description="Follow-up requests from the auditor")
     notes: Optional[str] = Field(None, description="Additional notes about the request")
 
-class TaxAudit(AuthorityDocument):
+class TaxAudit(TaxAuthorityDocument):
     """Document related to a tax audit, review, or examination by a taxation authority like Canada Revenue Agency or the IRS"""
     audit_id: Optional[str] = Field(None, description="Identification number of the audit")
     auditing_authority: Optional[str] = Field(None, description="Tax authority conducting the audit")
@@ -500,7 +504,7 @@ class TaxComplianceCalendar(ComplianceDocument):
     special_obligations: Optional[List[Dict[str, Any]]] = Field(None, description="One-time or special obligations")
     notes: Optional[Dict[str, str]] = Field(None, description="Notes on specific obligations")
 
-class TaxAuthorityCorrespondence(AuthorityDocument):
+class TaxAuthorityCorrespondence(TaxAuthorityDocument):
     """Correspondence with tax authorities"""
     correspondence_type: Optional[str] = Field(None, description="Type of correspondence")
     correspondence_direction: Optional[str] = Field(None, description="Direction (Inbound/Outbound)")
