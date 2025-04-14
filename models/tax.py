@@ -108,6 +108,12 @@ class AnalyticalDocument(TaxDocument):
     data_sources: Optional[List[str]] = Field(None, description="Sources of data used in the analysis")
     limitations: Optional[List[str]] = Field(None, description="Limitations of the analysis")
 
+class TaxAgreement(TaxDocument, Agreement):
+    """A legal agreement related to taxation matters, establishing rights and obligations between parties.
+    This base class captures the fundamental elements common to all types of tax agreements, providing
+    a foundation for more specialized tax agreement types like settlements, payment plans, etc."""
+    pass
+
 class TaxAuthorityDocument(TaxDocument):
     """A document such as a letter, notice, audit result, etc. issued by a tax authority such as Canada Revenue Agency or the IRS"""
     issuing_authority: Optional[str] = Field(None, description="Authority that issued the document")
@@ -299,7 +305,7 @@ class TaxNotice(TaxAuthorityDocument):
     resolution_date: Optional[date] = Field(None, description="Date the matter was resolved")
     resolution_details: Optional[str] = Field(None, description="Details of how the matter was resolved")
 
-class TaxSettlement(TaxAuthorityDocument, Agreement):
+class TaxSettlement(TaxAgreement):
     """Document related to a tax settlement with authorities"""
     settlement_type: Optional[str] = Field(None, description="Type of settlement")
     original_disputed_amount: Optional[float] = Field(None, description="Original amount in dispute")

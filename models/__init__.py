@@ -24,7 +24,7 @@ from .tax import (
     TaxDocument, ComplianceDocument, AnalyticalDocument, TaxAuthorityDocument,
     ProfessionalTaxAdvisoryDocument, TaxReturn, CorporateTaxReturn, PassthroughTaxReturn,
     TaxAssessment, TaxDispute, ProfessionalTaxOpinion, TaxRuling, TaxNotice,
-    TaxSettlement, TaxRiskAssessment, TaxReservesAnalysis, TaxAudit, TaxPlanningDocument,
+    TaxAgreement, TaxSettlement, TaxRiskAssessment, TaxReservesAnalysis, TaxAudit, TaxPlanningDocument,
     TaxIncentiveDocument, TransferPricingDocument, TaxComplianceCalendar,
     TaxAuthorityCorrespondence, AuditHistory, AuditWorkpaper, TaxProvisionDocument,
     PropertyTaxDocument, CustomsDocument
