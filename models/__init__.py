@@ -60,11 +60,13 @@ from .due_diligence_areas import (
 )
 from .data_sharing import (
     DataSharingAgreement,
+    DataProtectionAddendum,
     DataCategory,
     DataProcessingPurpose,
     DataTransferMechanism,
     DataProtectionMeasure,
     DataSharingFrequency,
-    DataRetentionPeriod
+    DataRetentionPeriod,
+    GDPRAgreementType
 )
 from .auto import AutoModel

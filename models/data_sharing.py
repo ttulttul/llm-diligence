@@ -4,6 +4,15 @@ from pydantic import Field
 from datetime import date
 from .contracts import CommercialAgreement
 
+class GDPRAgreementType(str, Enum):
+    """Types of GDPR-specific data sharing agreements"""
+    DPA = "data processing addendum"
+    JOINT_CONTROLLER = "joint controller agreement"
+    SCCs = "standard contractual clauses"
+    BCRs = "binding corporate rules"
+    CONSENT_FRAMEWORK = "consent framework agreement"
+    DPIA = "data protection impact assessment"
+
 class DataCategory(str, Enum):
     """Categories of data that may be shared"""
     PERSONAL = "personal data"
@@ -87,6 +96,58 @@ class DataRetentionPeriod(str, Enum):
     PURPOSE_COMPLETION = "until purpose is completed"
     HYBRID = "varies by data category"
 
+class DataProtectionAddendum(CommercialAgreement):
+    """A GDPR-focused agreement that establishes the terms and conditions for processing personal data.
+    
+    This model captures the specific requirements under GDPR for data processing relationships,
+    including controller-processor obligations, data subject rights management, breach notification
+    requirements, and cross-border transfer mechanisms. It enables systematic analysis of GDPR
+    compliance in data processing arrangements between organizations."""
+    
+    # Parties and roles
+    controller_name: str = Field(..., description="Entity acting as the data controller")
+    processor_name: str = Field(..., description="Entity acting as the data processor")
+    sub_processors_allowed: bool = Field(False, description="Whether sub-processors are permitted")
+    sub_processor_approval_required: Optional[bool] = Field(None, description="Whether controller approval is required for sub-processors")
+    
+    # GDPR specifics
+    gdpr_agreement_type: GDPRAgreementType = Field(GDPRAgreementType.DPA, description="Type of GDPR agreement")
+    article_28_compliant: bool = Field(True, description="Whether the agreement is compliant with GDPR Article 28")
+    sccs_incorporated: bool = Field(False, description="Whether Standard Contractual Clauses are incorporated")
+    sccs_version: Optional[str] = Field(None, description="Version of SCCs used if applicable")
+    
+    # Data subject rights
+    data_subject_request_handling: str = Field(..., description="Process for handling data subject requests")
+    data_subject_request_timeframe_days: Optional[int] = Field(None, description="Timeframe for responding to data subject requests in days")
+    right_to_erasure_process: Optional[str] = Field(None, description="Process for handling right to erasure requests")
+    right_to_access_process: Optional[str] = Field(None, description="Process for handling right to access requests")
+    
+    # Breach notification
+    breach_notification_hours: int = Field(72, description="Time frame for breach notification in hours")
+    breach_notification_process: str = Field(..., description="Process for notifying of data breaches")
+    
+    # Technical and organizational measures
+    technical_measures: List[str] = Field(..., description="Technical measures for data protection")
+    organizational_measures: List[str] = Field(..., description="Organizational measures for data protection")
+    
+    # Audit and compliance
+    audit_rights: bool = Field(True, description="Whether the controller has audit rights")
+    audit_frequency: Optional[str] = Field(None, description="How often audits may be conducted")
+    audit_notice_period_days: Optional[int] = Field(None, description="Notice period required for audits in days")
+    
+    # Cross-border transfers
+    transfers_outside_eea_allowed: bool = Field(False, description="Whether transfers outside the EEA are allowed")
+    transfer_safeguards: Optional[List[str]] = Field(None, description="Safeguards for international transfers")
+    
+    # Term and termination
+    return_or_deletion_upon_termination: str = Field(..., description="Requirements for data return or deletion upon termination")
+    certification_of_deletion_required: bool = Field(True, description="Whether certification of deletion is required")
+    
+    # Liability
+    liability_cap_specified: Optional[bool] = Field(None, description="Whether a liability cap is specified")
+    liability_cap_amount: Optional[float] = Field(None, description="Amount of liability cap if specified")
+    processor_indemnification_required: Optional[bool] = Field(None, description="Whether processor indemnification is required")
+
 class DataSharingAgreement(CommercialAgreement):
     """A contractual arrangement governing the sharing of data between organizations, establishing the terms, 
     conditions, and safeguards for data exchange.
@@ -95,6 +156,13 @@ class DataSharingAgreement(CommercialAgreement):
     processing purposes, transfer mechanisms, security measures, and compliance requirements. It enables 
     systematic analysis of data sharing arrangements to ensure proper governance, risk management, and 
     regulatory compliance across organizational boundaries."""
+    
+    # GDPR-specific fields
+    is_gdpr_relevant: Optional[bool] = Field(None, description="Whether the agreement is subject to GDPR")
+    gdpr_agreement_type: Optional[GDPRAgreementType] = Field(None, description="Type of GDPR agreement if applicable")
+    has_data_protection_addendum: Optional[bool] = Field(None, description="Whether a separate DPA is attached or referenced")
+    dpa_date: Optional[date] = Field(None, description="Date of the associated Data Protection Addendum")
+    controller_processor_relationship: Optional[str] = Field(None, description="Nature of controller-processor relationship if applicable")
     
     # Parties and roles
     data_provider: str = Field(..., description="Entity providing the data")
