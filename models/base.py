@@ -28,49 +28,6 @@ class DiligentizerModel(BaseModel):
         data = super().model_dump(**kwargs)
         return data
 
-# Party to an Agreement
-class AgreementParty(BaseModel):
-    party_name: Optional[str] = Field(None, description="The name of a party to an agreement")
-
-# Base class for all agreements
-class Agreement(DiligentizerModel):
-    """A legal document establishing rights and obligations between parties, including effective dates and governing law.
-    This base class captures the fundamental elements common to all types of agreements, providing
-    a foundation for more specialized agreement types like licenses, employment contracts, etc."""
-    effective_date: Optional[date] = Field(None, description="The date when the agreement becomes effective")
-    parties: List[AgreementParty] = Field(None, description="The parties involved in the agreement")
-    governing_law: Optional[str] = Field(None, description="The jurisdiction's laws governing the agreement")
-
-# Base class for customer agreements
-class CustomerAgreement(Agreement):
-    """A contractual arrangement where a provider delivers services or products to a customer under specific terms and conditions.
-    This model represents commercial agreements between service/product providers and their customers,
-    capturing key relationship details like term dates, renewal provisions, and party identification."""
-    provider_name: str = Field(..., description="The name of the service provider entity")
-    customer_name: str = Field(..., description="The name of the customer entity")
-    start_date: Optional[date] = Field(None, description="The start date of the agreement")
-    end_date: Optional[date] = Field(None, description="The end date of the agreement")
-    auto_renews: Optional[bool] = Field(None, description="Whether the agreement automatically renews")
-
-# Base class for license agreements
-class LicenseAgreement(Agreement):
-    """A legal agreement granting permission to use intellectual property or assets under specified conditions and restrictions.
-    This model represents agreements that grant usage rights to intellectual property or other assets,
-    capturing the licensor-licensee relationship and the scope and limitations of the granted rights."""
-    licensor: str = Field(..., description="The party granting the license")
-    licensee: str = Field(..., description="The party receiving the license")
-    license_scope: Optional[str] = Field(None, description="The scope of the license grant")
-    license_restrictions: Optional[List[str]] = Field(None, description="Restrictions on the license")
-
-# Base class for employment agreements
-class EmploymentAgreement(Agreement):
-    """A contract establishing the relationship between employer and employee, including work terms, compensation, and obligations.
-    This model represents the formal agreement between an employer and employee, capturing essential
-    employment details such as parties involved, start date, and compensation structure."""
-    employer: str = Field(..., description="The employer entity")
-    employee: str = Field(..., description="The employee name")
-    start_date: Optional[date] = Field(None, description="Employment start date")
-    compensation_description: Optional[str] = Field(None, description="Description of compensation terms")
 
 # Base class for all financial documents
 class FinancialDocument(DiligentizerModel):
