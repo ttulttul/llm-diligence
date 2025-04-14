@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional, List, Dict, Any
 from pydantic import Field, BaseModel
 from datetime import date, datetime
-from .base import DiligentizerModel, FinancialDocument
+from .base import DiligentizerModel
 
 class TaxJurisdiction(str, Enum):
     """Types of tax jurisdictions"""
@@ -60,7 +60,7 @@ class TaxIncentiveType(str, Enum):
     EXPORT_INCENTIVE = "export incentive"
     OTHER = "other tax incentive"
 
-class TaxDocument(FinancialDocument):
+class TaxDocument(DiligentizerModel):
     """A document related to taxation, such as documents from Canada Revenue Agency or the IRS.
     
     This model serves as the foundation for all tax-related document types, capturing essential
