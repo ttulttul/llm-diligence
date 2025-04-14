@@ -414,22 +414,39 @@ def main():
                 
                 # Store classification result for CSV if requested
                 if args.classify_only and hasattr(result, 'model_name'):
+                    # Get the selection path, ensuring it's a list of path elements, not characters
+                    selection_path = []
+                    if hasattr(result, 'selection_path'):
+                        # If selection_path is a string, split it by the arrow separator
+                        if isinstance(result.selection_path, str):
+                            # Split by arrow if it contains arrows
+                            if " -> " in result.selection_path:
+                                selection_path = result.selection_path.split(" -> ")
+                            else:
+                                selection_path = [result.selection_path]
+                        else:
+                            selection_path = result.selection_path
+                    
                     # Store the result for later writing to CSV
                     result_data = {
                         'file_path': file_path,
                         'model_name': result.model_name,
-                        'selection_path': result.selection_path if hasattr(result, 'selection_path') else []
+                        'selection_path': selection_path
                     }
                     classification_results.append(result_data)
                     
                     # Update max path length if needed
-                    if hasattr(result, 'selection_path') and result.selection_path:
-                        path_length = len(result.selection_path)
+                    if selection_path:
+                        path_length = len(selection_path)
                         max_path_length = max(max_path_length, path_length)
                 
                 # If this is an AutoModel result with a selection path, log it
                 if hasattr(result, 'selection_path') and result.selection_path:
-                    path_str = " -> ".join(result.selection_path)
+                    # Handle both string and list formats for selection_path
+                    if isinstance(result.selection_path, str):
+                        path_str = result.selection_path
+                    else:
+                        path_str = " -> ".join(result.selection_path)
                     logger.info(f"Model selection path: {path_str}")
                     print(f"Model selection path: {path_str}")
             else:
