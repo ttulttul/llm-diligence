@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any, Union
 from pydantic import Field, BaseModel
 from datetime import date, datetime
 from .base import DiligentizerModel
-from .contracts import EmploymentAgreement
+from .contracts import EmploymentAgreement, Agreement
 
 # Enums for HR document types
 
