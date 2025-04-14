@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import Field
-from .base import CustomerAgreement
+from .contracts import CustomerAgreement
 
 class CloudServiceType(str, Enum):
     """Types of cloud services"""

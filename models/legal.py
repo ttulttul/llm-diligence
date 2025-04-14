@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import Field
-from .base import DiligentizerModel, LicenseAgreement
+from .base import DiligentizerModel
+from .contracts import LicenseAgreement
 
 class LicenseGrantType(str, Enum):
     USE = "use only"
