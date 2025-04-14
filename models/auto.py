@@ -1,7 +1,7 @@
 from typing import Dict, Type, Any, List, Union, Optional, Set
 import os
 import inspect
-from .base import DiligentizerModel, Agreement, FinancialDocument, DueDiligenceDocument
+from .base import DiligentizerModel
 from pydantic import Field, BaseModel
 import json
 import instructor
@@ -15,6 +15,9 @@ from utils import logger
 class AutoDocumentClassification(DiligentizerModel):
     """Model used to receive the selected model name from the LLM."""
     model_name: str = Field(..., description="The name of the most appropriate model for this document")
+
+    class Config:
+        extra = 'allow'
 
 class AutoModel(DiligentizerModel):
     """Automatically selects the most appropriate model to analyze the document."""
@@ -65,12 +68,11 @@ class AutoModel(DiligentizerModel):
         """Get models that directly inherit from DiligentizerModel."""
         base_models = {}
         for name, model_class in available_models.items():
-            if name == "auto_AutoModel":  # Skip the auto model itself
+            if name.startswith("auto"):  # Skip all models in the auto module
                 continue
             
             # Check if this model directly inherits from DiligentizerModel
             if DiligentizerModel in model_class.__bases__:
-                logger.info(f"BASE_MODEL: {name} {model_class}")
                 base_models[name] = model_class
         
         return base_models
@@ -150,9 +152,7 @@ Respond with only the exact model name (one of the keys from the available model
         # Initialize with base models (those directly inheriting from DiligentizerModel)
         current_models = cls._get_base_models(available_models)
         if not current_models:
-            logger.warning("No base models found that directly inherit from DiligentizerModel")
-            # Fall back to using all models
-            current_models = {k: v for k, v in available_models.items() if k != "auto_AutoModel"}
+            raise Exception("No available models: something is wrong with the installation")
 
         logger.info(f"Starting with models: {current_models}")
         
@@ -211,7 +211,9 @@ Respond with only the exact model name (one of the keys from the available model
         
         # If we are asked only to return the document classification, then do so
         if classify_only:
-            return AutoDocumentClassification(model_name=chosen_model_name)
+            adc = AutoDocumentClassification(model_name=chosen_model_name)
+            adc.selection_path = " -> ".join(selection_path)
+            return adc
         
         # Get the description of the chosen model
         chosen_model_description = model_class.__doc__ or "No description available"
