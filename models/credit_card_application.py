@@ -9,8 +9,8 @@ from typing import Optional, Dict, Any, List, Type, Union
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
-from .base import DiligentizerModel, FinancialDocument
-from .contracts import AgreementParty
+from .base import DiligentizerModel
+from .contracts import AgreementParty, CommercialAgreement
 
 class ApplicationStatusType(str, Enum):
     """Whether the application is new or an increase."""
@@ -116,7 +116,7 @@ class ApplicantOwnerInfo(AgreementParty):
     prior_personal_adverse_events_details: Optional[str] = Field(None, description="Details of any claim/lawsuit, prior bankruptcy, or currently owed back taxes for the owner/partner")
 
 
-class CreditCardApplication(FinancialDocument):
+class CreditCardApplication(CommercialAgreement):
     """Model representing a borrowing application focusing on
     requests for credit facilities like credit cards or lines of credit."""
 
@@ -173,9 +173,10 @@ class CreditCardApplication(FinancialDocument):
     signed_business_name: Optional[str] = Field(None, description="Printed name of the business in the signature section")
 
 
-    # Meta fields from base class customization
-    currency: Optional[str] = Field("CAD", description="Currency used in the financial figures (Default: CAD)") # Override default None
-    fiscal_year: Optional[str] = Field(None, description="Fiscal year corresponding to the financial summary, if derivable") # Inherited, maybe useful
+    # Meta fields 
+    currency: Optional[str] = Field("CAD", description="Currency used in the financial figures (Default: CAD)")
+    fiscal_year: Optional[str] = Field(None, description="Fiscal year corresponding to the financial summary, if derivable")
+    company_name: Optional[str] = Field(None, description="Full Business Name")
 
     # --- Validators for Date Parsing ---
 
