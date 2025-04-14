@@ -58,4 +58,13 @@ from .due_diligence_areas import (
     # Main mapping model
     DiligenceAreaMapping
 )
+from .data_sharing import (
+    DataSharingAgreement,
+    DataCategory,
+    DataProcessingPurpose,
+    DataTransferMechanism,
+    DataProtectionMeasure,
+    DataSharingFrequency,
+    DataRetentionPeriod
+)
 from .auto import AutoModel
