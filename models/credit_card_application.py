@@ -179,7 +179,7 @@ class CreditCardApplication(FinancialDocument):
 
     # --- Validators for Date Parsing ---
 
-    @field_validator('date_established', 'current_ownership_since', mode='before')
+    @field_validator('date_established', 'current_ownership_since', mode='before', check_fields=False)
     @classmethod
     def parse_my_date(cls, value):
         """Attempts to parse M/Y or MM/YY format to a date (using 1st of month)."""
@@ -216,7 +216,7 @@ class CreditCardApplication(FinancialDocument):
             return value
         return None
 
-    @field_validator('birth_date', 'application_signed_date', mode='before')
+    @field_validator('birth_date', 'application_signed_date', mode='before', check_fields=False)
     @classmethod
     def parse_full_date(cls, value):
         """Attempts to parse M/D/Y or similar full date formats."""
@@ -251,7 +251,7 @@ class CreditCardApplication(FinancialDocument):
             return value
         return None
 
-    @field_validator('income_year', mode='before')
+    @field_validator('income_year', mode='before', check_fields=False)
     @classmethod
     def parse_year(cls, value):
         """Attempts to parse a year, accepting string or int."""
