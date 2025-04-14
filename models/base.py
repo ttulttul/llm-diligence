@@ -9,7 +9,7 @@ import sys
 
 # Base class for all models
 class DiligentizerModel(BaseModel):
-    """Base class for all diligentizer models"""
+    """The foundational model for all document analysis, providing core metadata about analyzed documents"""
     source_filename: Optional[str] = Field(None, description="The filename of the source PDF document")
     analyzed_at: Optional[datetime] = Field(None, description="Timestamp when the document was analyzed")
     llm_model: Optional[str] = Field(None, description="The LLM model used for analysis (e.g. Claude model name)")
@@ -32,14 +32,14 @@ class AgreementParty(BaseModel):
 
 # Base class for all agreements
 class Agreement(DiligentizerModel):
-    """Base class for all types of agreements and contracts"""
+    """A legal document establishing rights and obligations between parties, including effective dates and governing law"""
     effective_date: Optional[date] = Field(None, description="The date when the agreement becomes effective")
     parties: List[AgreementParty] = Field(None, description="The parties involved in the agreement")
     governing_law: Optional[str] = Field(None, description="The jurisdiction's laws governing the agreement")
 
 # Base class for customer agreements
 class CustomerAgreement(Agreement):
-    """Base class for agreements between a service provider and a customer"""
+    """A contractual arrangement where a provider delivers services or products to a customer under specific terms and conditions"""
     provider_name: str = Field(..., description="The name of the service provider entity")
     customer_name: str = Field(..., description="The name of the customer entity")
     start_date: Optional[date] = Field(None, description="The start date of the agreement")
@@ -48,7 +48,7 @@ class CustomerAgreement(Agreement):
 
 # Base class for license agreements
 class LicenseAgreement(Agreement):
-    """Base class for all types of license agreements"""
+    """A legal agreement granting permission to use intellectual property or assets under specified conditions and restrictions"""
     licensor: str = Field(..., description="The party granting the license")
     licensee: str = Field(..., description="The party receiving the license")
     license_scope: Optional[str] = Field(None, description="The scope of the license grant")
@@ -56,7 +56,7 @@ class LicenseAgreement(Agreement):
 
 # Base class for employment agreements
 class EmploymentAgreement(Agreement):
-    """Base class for all types of employment agreements"""
+    """A contract establishing the relationship between employer and employee, including work terms, compensation, and obligations"""
     employer: str = Field(..., description="The employer entity")
     employee: str = Field(..., description="The employee name")
     start_date: Optional[date] = Field(None, description="Employment start date")
@@ -64,7 +64,7 @@ class EmploymentAgreement(Agreement):
 
 # Base class for all financial documents
 class FinancialDocument(DiligentizerModel):
-    """Base class for all financial documents and statements"""
+    """A document containing financial information, reporting, or analysis for an organization over a specific period"""
     company_name: Optional[str] = Field(None, description="Name of the company or entity")
     fiscal_year: Optional[str] = Field(None, description="Fiscal year or period of the document")
     currency: Optional[str] = Field(None, description="Currency used in the financial document")
