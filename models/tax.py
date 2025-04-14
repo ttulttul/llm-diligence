@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional, List, Dict, Any
 from pydantic import Field, BaseModel
 from datetime import date, datetime
-from .base import DiligentizerModel
+from .base import DiligentizerModel, FinancialDocument
 
 class TaxJurisdiction(str, Enum):
     """Types of tax jurisdictions"""
