@@ -80,7 +80,7 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
-    logger.debug(f"cached_llm_invoke: {user_content}")
+    logger.info(f"LLM query (model={model_name}): {user_content}")
 
     # If model_name is None, set it automatically to the default
     if model_name is None:
