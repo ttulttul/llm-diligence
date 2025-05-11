@@ -38,7 +38,8 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbo
 def _run_auto(pdf_path: str, model_class: Type[DiligentizerModel],
               db_path: Optional[str] = None, classify_only: bool = False,
               prompt_extra: Optional[str] = None,
-              provider: str = "anthropic") -> Optional[DiligentizerModel]:
+              provider: str = "anthropic",
+              provider_model: str | None = None) -> Optional[DiligentizerModel]:
     "Use automatic model selection"
 
     logger.info(f"Using AutoModel for {pdf_path}")
@@ -61,7 +62,10 @@ def _run_auto(pdf_path: str, model_class: Type[DiligentizerModel],
             logger.info(f"AutoModel selected: {selected_model_name}")
             
             selected_model_class = models_dict[selected_model_name]
-            return run_analysis(selected_model_class, pdf_path, db_path, prompt_extra=prompt_extra, provider=provider)
+            return run_analysis(selected_model_class, pdf_path, db_path,
+                                prompt_extra=prompt_extra,
+                                provider=provider,
+                                provider_model=provider_model)
 
     except Exception as e:
         logger.error(f"Error during auto model selection: {e}", exc_info=True)
@@ -75,16 +79,17 @@ def run_analysis(model_class: Type[DiligentizerModel],
                  db_path: Optional[str] = None,
                  classify_only: bool = False,
                  prompt_extra: Optional[str] = None,
-                 provider: str = "anthropic") -> Optional[DiligentizerModel]:
+                 provider: str = "anthropic",
+                 provider_model: str | None = None) -> Optional[DiligentizerModel]:
     """Run the analysis with the selected model. Return the model object."""
 
     # If the model is the automatic model, then dispatch analysis to the auto model.
     if model_class.__name__ == "AutoModel":
         return _run_auto(pdf_path, model_class, db_path,
-                         classify_only, prompt_extra, provider)
+                         classify_only, prompt_extra, provider, provider_model)
     else:
         return _run_manual(pdf_path, model_class, db_path,
-                           prompt_extra, provider)
+                           prompt_extra, provider, provider_model)
 
 def _get_prompt(model_class):
     field_descriptions = []
@@ -107,7 +112,8 @@ def _run_manual(pdf_path: str,
                 model_class: DiligentizerModel,
                 db_path: Optional[str] = None,
                 prompt_extra: Optional[str] = None,
-                provider: str = "anthropic") -> Optional[DiligentizerModel]:
+                provider: str = "anthropic",
+                provider_model: str | None = None) -> Optional[DiligentizerModel]:
     "Get the LLM to analyze the document using the specified model"
 
     logger.info(f"Analyzing {pdf_path} with {model_class.__name__}")
@@ -128,6 +134,7 @@ def _run_manual(pdf_path: str,
     
     try:
         response = cached_llm_invoke(
+            model_name=provider_model,
             system_message="You are a document analysis assistant that extracts structured information from documents.",
             user_content=message_content,
             max_tokens=2000,
@@ -142,11 +149,10 @@ def _run_manual(pdf_path: str,
         response.source_filename = pdf_path
         response.analyzed_at = datetime.now()
         # Record which provider / concrete model produced the answer
-        if provider.lower() == "anthropic":
-            response.llm_model = get_claude_model_name()
-        else:   # OpenAI
-            import os
-            response.llm_model = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
+        chosen_model = (provider_model
+                        or (get_claude_model_name() if provider.lower() == "anthropic"
+                            else "gpt-4o-mini"))
+        response.llm_model = chosen_model
     except Exception as e:
         logger.error(f"Object returned by llm invocation does not have necessary fields")
         return None

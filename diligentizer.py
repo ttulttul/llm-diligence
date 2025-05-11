@@ -394,7 +394,8 @@ def main():
                 classify_only,
                 prompt_extra=args.prompt_extra,
                 crawl_limit=args.crawl_limit,
-                provider=provider
+                provider=provider,
+                provider_model=provider_model
             )
         else:
             # Process a single file
@@ -411,7 +412,8 @@ def main():
                         model_class, args.pdf, None,
                         classify_only,
                         prompt_extra=args.prompt_extra,
-                        provider=provider
+                        provider=provider,
+                        provider_model=provider_model
                     )
                     yield (True, str(pdf_path), result, None)
                 except Exception as e:

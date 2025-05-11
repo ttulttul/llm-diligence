@@ -15,19 +15,19 @@ def process_file(args: Tuple) -> Tuple[bool, str, Optional[DiligentizerModel], O
     
     Args:
         args: Tuple containing (pdf_path, model_class, sqlite_path, json_output_dir, 
-                               selected_model, crawl_path, classify_only, prompt_extra, provider)
+                               selected_model, crawl_path, classify_only, prompt_extra, provider, provider_model)
         
     Returns:
         Tuple of (success, file_path, result, exception)
     """
-    pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only, prompt_extra, provider = args
+    (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only, prompt_extra, provider, provider_model) = args
     
     try:
         # Calculate relative path for output
         relative_path = pdf_path.relative_to(crawl_path)
         
         # Run analysis on this file
-        result = run_analysis(model_class, str(pdf_path), sqlite_path, classify_only, prompt_extra, provider=provider)
+        result = run_analysis(model_class, str(pdf_path), sqlite_path, classify_only, prompt_extra=prompt_extra, provider=provider, provider_model=provider_model)
         
         # Save result as JSON if requested
         if json_output_dir and result:
@@ -66,7 +66,8 @@ def process_directory(
     classify_only: bool = False,
     prompt_extra: Optional[str] = None,
     crawl_limit: Optional[int] = None,
-    provider: str = "anthropic"
+    provider: str = "anthropic",
+    provider_model: str | None = None
 ):
     """
     Recursively process all PDF files in the specified directory.
@@ -111,7 +112,7 @@ def process_directory(
         
         # Prepare arguments for each file
         process_args = [
-            (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only, prompt_extra, provider)
+            (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only, prompt_extra, provider, provider_model)
             for pdf_path in pdf_files
         ]
         
@@ -129,7 +130,9 @@ def process_directory(
             relative_path = pdf_path.relative_to(crawl_path)
             logger.info(f"Processing file: {pdf_path}")
             
-            success, file_path, result, exception = process_file((pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only, prompt_extra, provider))
+            success, file_path, result, exception = process_file(
+                (pdf_path, model_class, sqlite_path, json_output_dir, selected_model, crawl_path, classify_only, prompt_extra, provider, provider_model)
+            )
             
             # Yield the result to the caller
             yield (success, file_path, result, exception)
