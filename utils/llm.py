@@ -1,19 +1,19 @@
-import os
-import instructor
-from instructor.multimodal import PDF
-from anthropic import Anthropic
-import json
+# Standard library
 import hashlib
-import diskcache
-import functools
-from pydantic import BaseModel
+import json
+import os
 from unittest.mock import MagicMock
 
+# Third-party
+import diskcache
+import instructor
+from anthropic import Anthropic
 try:
-    from openai import OpenAI          # NEW
-except ImportError:                   # NEW
-    OpenAI = None                     # NEW
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
 
+# Local
 from utils import logger
 
 def get_claude_model_name():
@@ -382,7 +382,7 @@ def _openai_upload_file(client: "OpenAI", file_path: str):
     Upload *file_path* to the OpenAI ‟files” endpoint and return the new file id.
     Caches by SHA-256 so we do not re-upload identical content in the same run.
     """
-    import hashlib, pathlib, functools
+    import hashlib, pathlib
 
     abs_path = pathlib.Path(file_path).expanduser().resolve()
     digest   = hashlib.sha256(abs_path.read_bytes()).hexdigest()
