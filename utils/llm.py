@@ -74,13 +74,32 @@ def format_content_for_anthropic(content):
         # Simple text content
         return [{"type": "text", "text": content}]
 
+def _pretty_format_user_content(content) -> str:
+    """Return a human-readable, multi-line string representation of user_content
+    where long text fields are printed with real newlines instead of the escaped
+    '\n' characters produced by json.dumps."""
+    from textwrap import indent
+
+    if not isinstance(content, list):
+        return str(content)
+
+    lines = []
+    for idx, item in enumerate(content):
+        # Typical Anthropic message items are dicts with {'type', 'text'}
+        if isinstance(item, dict) and "text" in item:
+            header = f"content[{idx}] ({item.get('type', 'text')}):"
+            body   = indent(item["text"].rstrip(), "  ")
+            lines.append(f"{header}\n{body}")
+        else:
+            # Fallback representation for non-dict items (e.g. PDF objects)
+            lines.append(f"content[{idx}]: {item!r}")
+    return "\n".join(lines)
+
 def cached_llm_invoke(model_name: str=None, system_message: str="", user_content: list=[], max_tokens: int=100, 
                      temperature: float=0, response_model=None):
     """Function to invoke the LLM with caching support for Pydantic models."""
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    logger.info(f"LLM query (model={model_name}): {user_content}")
 
     # If model_name is None, set it automatically to the default
     if model_name is None:
