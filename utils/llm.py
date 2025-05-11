@@ -32,7 +32,7 @@ def _log_llm_response(result):
             payload = str(result)
     except Exception as exc:                          # never let logging crash the flow
         payload = f"<unserialisable response: {exc!r}>"
-    logger.info("LLM response: %s", payload)
+    logger.debug("LLM response: %s", payload)
 
 def get_claude_model_name():
     """Get the Claude model name from environment variable or use default."""
@@ -65,7 +65,7 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
     combined = "||".join(key_parts)
 
     cache_key = hashlib.md5(combined.encode()).hexdigest()
-    logger.info(f"_generate_cache_key({combined}) -> {cache_key}")
+    logger.debug(f"_generate_cache_key({combined}) -> {cache_key}")
     return cache_key
 
 def extract_text_from_pdf(pdf_path):
@@ -167,7 +167,7 @@ def _cached_claude_invoke(
         model_name = get_claude_model_name()
 
     pretty = _pretty_format_user_content(user_content)
-    logger.info("LLM query (model=%s):\n%s", model_name, pretty)
+    logger.info("LLM query (model=%s, max_tokens=%d):\n%s", model_name, max_tokens, pretty)
 
     # Generate a cache key for this specific request
     cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
@@ -244,7 +244,7 @@ def _cached_openai_invoke(
 
     # Prepare logging text exactly like _pretty_format_user_content does
     pretty = _pretty_format_user_content(user_content)
-    logger.info("LLM query (provider=openai, model=%s):\n%s", model_name, pretty)
+    logger.info("LLM query (model=%s, max_tokens=%d):\n%s", model_name, max_tokens, pretty)
 
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
@@ -318,7 +318,7 @@ def cached_llm_invoke(
     max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
-    provider: str = "anthropic",           # NEW
+    provider: str = "anthropic", 
 ):
     """
     Unified entry point.  Set provider to 'anthropic'/'claude' (default)
@@ -349,112 +349,9 @@ def cached_llm_invoke(
     else:
         raise ValueError(f"Unknown provider '{provider}'")
 
-def cached_openai_responses_invoke(
-    model_name: str = "gpt-4o-mini",
-    messages: list | None = None,
-    file_path: str | None = None,          # NEW
-    max_tokens: int = 2048,
-    temperature: float = 1.0,
-    top_p: float = 1.0,
-    store: bool = True,
-    reasoning_effort: str | None = 'low',
-    reasoning_tokens: int | None = None,         # NEW
-):
-    """
-    Lightweight wrapper around the OpenAI *Responses* beta API that
-    transparently caches identical requests.
-    `messages` must be a list of message dicts (role/content); plain strings
-    in `content` are auto-wrapped.
-    """
-    if OpenAI is None:          # imported at top in step 1
-        raise ImportError("openai package not available")
-
-    messages = messages or []
-    messages = _format_openai_messages(messages)
-
-    if reasoning_effort is None:
-        reasoning_effort = 'low'
-
-    special_models = {"o4-mini", "o3", "o1", "o1-pro"}
-    if model_name in special_models:
-        temperature = 1
-
-    if reasoning_tokens is None:
-        env_val = os.environ.get("LLM_MAX_REASONING_TOKENS")
-        if env_val:
-            try:
-                reasoning_tokens = int(env_val)
-            except ValueError:
-                logger.warning("Invalid LLM_MAX_REASONING_TOKENS=%s", env_val)
-
-    if reasoning_tokens is None and model_name in special_models:
-        reasoning_tokens = 10_000
-
-    # ---- NEW (just after we normalise messages) ----
-    if file_path:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        file_id = _openai_upload_file(client, file_path)
-
-        # Prepend a message that contains the uploaded file
-        messages.insert(
-            0,
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_file", "file_id": file_id},
-                ],
-            },
-        )
-
-    # Key must include provider to avoid collisions with Anthropic calls
-    cache_key = _generate_cache_key(
-        f"openai:{model_name}",
-        "",
-        {"messages": messages,
-         "file_path": file_path,
-         "reasoning_effort": reasoning_effort,
-         "reasoning_tokens": reasoning_tokens},        # NEW
-        max_tokens,
-        None
-    )
-
-    cached = cache.get(cache_key)
-    if cached is not None:
-        logger.info("cached_openai_responses_invoke: using cached result")
-        _log_llm_response(cached)
-        return cached                    # we stored JSON serialisable dict
-
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    reasoning_arg = {}
-    if reasoning_effort:
-        reasoning_arg["effort"] = reasoning_effort
-    if reasoning_tokens is not None:
-        reasoning_arg["max_output_tokens"] = reasoning_tokens       # NEW
-    response = client.responses.create(
-        model=model_name,
-        input=messages,
-        text={"format": {"type": "text"}},
-        reasoning=reasoning_arg,
-        tools=[],
-        temperature=temperature,
-        max_output_tokens=max_tokens,
-        top_p=top_p,
-        store=store,
-    )
-
-    _log_llm_response(response)
-    # Serialise for cache – prefer model_dump_json if available
-    try:
-        cache.set(cache_key, response.model_dump())
-    except AttributeError:
-        # Fallback: assume response is already JSON-serialisable
-        cache.set(cache_key, response)
-
-    return response
 __all__ = [
     "get_claude_model_name",
     "cached_llm_invoke",
-    "cached_openai_responses_invoke",
     "_openai_upload_file",
     "_cached_claude_invoke",      # NEW
     "_cached_openai_invoke",      # NEW

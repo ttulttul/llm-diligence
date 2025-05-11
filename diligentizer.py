@@ -253,11 +253,10 @@ def main():
                  "(low | medium | high)"
         )
         parser.add_argument(
-            "--provider-reasoning-tokens",
+            "--provider-max-tokens",
             type=int,
             metavar="N",
-            help="OpenAI 'o'-family reasoning models accept a max_reasoning_tokens "
-                 "parameter.  (default: 10 000 when such a model is used)"
+            help="Specify the maximum tokens for the LLM model; a model default will be used if not specified"
         )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
@@ -275,10 +274,6 @@ def main():
         provider_reasoning_effort = args.provider_reasoning_effort
         if provider_reasoning_effort:
             os.environ["LLM_REASONING_EFFORT"] = provider_reasoning_effort
-
-        provider_reasoning_tokens = args.provider_reasoning_tokens
-        if provider_reasoning_tokens is not None:
-            os.environ["LLM_MAX_REASONING_TOKENS"] = str(provider_reasoning_tokens)
 
         # Make provider_model visible to every worker
         if provider_model:
@@ -438,7 +433,7 @@ def main():
                 print("Error: --pdf is required when not using --crawl-dir or --csv-input")
                 logger.error("No PDF file specified")
                 return 1
-            
+
             # Create a generator that yields a single result for the single PDF
             def single_pdf_generator():
                 try:
@@ -448,7 +443,8 @@ def main():
                         classify_only,
                         prompt_extra=args.prompt_extra,
                         provider=provider,
-                        provider_model=provider_model
+                        provider_model=provider_model,
+                        provider_max_tokens=args.provider_max_tokens
                     )
                     yield (True, str(pdf_path), result, None)
                 except Exception as e:
@@ -504,7 +500,7 @@ def main():
                 model_name=provider_model,
                 system_message=system_message,
                 user_content=user_content,
-                max_tokens=100,
+                max_tokens=1000,
                 temperature=0,
                 provider=provider,
                 response_model=FilenameResponse        # NEW

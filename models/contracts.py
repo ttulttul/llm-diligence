@@ -59,7 +59,8 @@ class LicenseAgreement(CommercialAgreement):
 class EmploymentAgreement(Agreement):
     """A contract establishing the relationship between employer and employee, including work terms, compensation, and obligations.
     This model represents the formal agreement between an employer and employee, capturing essential
-    employment details such as parties involved, start date, and compensation structure."""
+    employment details such as parties involved, start date, and compensation structure.
+    Employment agreements are NOT appropriate to capture concepts like software license or service terms."""
     employer: str = Field(..., description="The employer entity")
     employee: str = Field(..., description="The employee name")
     start_date: Optional[date] = Field(None, description="Employment start date")
