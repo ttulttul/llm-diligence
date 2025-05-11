@@ -128,9 +128,16 @@ def _format_openai_messages(messages):
             )
     return formatted
 
-def cached_llm_invoke(model_name: str=None, system_message: str="", user_content: list=[], max_tokens: int=100, 
-                     temperature: float=0, response_model=None):
-    """Function to invoke the LLM with caching support for Pydantic models."""
+def _cached_claude_invoke(
+    model_name: str | None = None,
+    system_message: str = "",
+    user_content: list = [],
+    max_tokens: int = 100,
+    temperature: float = 0,
+    response_model=None,
+):
+    """Anthropic/Claude implementation (code formerly in cached_llm_invoke)."""
+    # --- original body of cached_llm_invoke START ---
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -193,6 +200,101 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
         text_result = result
         cache.set(cache_key, text_result)
         return text_result
+    # --- original body of cached_llm_invoke END ---
+
+def _cached_openai_invoke(
+    model_name: str = "gpt-4o-mini",
+    system_message: str = "",
+    user_content: list = [],
+    max_tokens: int = 100,
+    temperature: float = 0,
+    response_model=None,
+):
+    """OpenAI Chat implementation using instructor + caching."""
+    if OpenAI is None:
+        raise ImportError("openai package not available")
+
+    # Prepare logging text exactly like _pretty_format_user_content does
+    pretty = _pretty_format_user_content(user_content)
+    logger.info("LLM query (provider=openai, model=%s):\n%s", model_name, pretty)
+
+    cache_key = _generate_cache_key(
+        f"openai:{model_name}",
+        system_message,
+        user_content,
+        max_tokens,
+        response_model,
+    )
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        logger.info("cached_llm_invoke (openai): using cached result")
+        if response_model is None:
+            return cached_result
+        return response_model.model_validate_json(cached_result)
+
+    # Convert list content to single string like Anthropic path expects
+    content_str = (
+        "\n".join(user_content) if isinstance(user_content, list) else str(user_content)
+    )
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": content_str},
+    ]
+
+    # Build instructor-wrapped OpenAI client
+    client = instructor.from_openai(
+        OpenAI(api_key=os.getenv("OPENAI_API_KEY")),
+    )
+
+    result = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        response_model=response_model,
+    )
+
+    # Cache + return
+    if response_model is not None:
+        cache.set(cache_key, result.model_dump_json())
+        return result
+    cache.set(cache_key, result)
+    return result
+
+def cached_llm_invoke(
+    model_name: str | None = None,
+    system_message: str = "",
+    user_content: list = [],
+    max_tokens: int = 100,
+    temperature: float = 0,
+    response_model=None,
+    provider: str = "anthropic",           # NEW
+):
+    """
+    Unified entry point.  Set provider to 'anthropic'/'claude' (default)
+    or 'openai' to route the request.
+    """
+    provider = provider.lower()
+    if provider in {"anthropic", "claude"}:
+        return _cached_claude_invoke(
+            model_name,
+            system_message,
+            user_content,
+            max_tokens,
+            temperature,
+            response_model,
+        )
+    elif provider == "openai":
+        return _cached_openai_invoke(
+            model_name or "gpt-4o-mini",   # sensible default for OpenAI
+            system_message,
+            user_content,
+            max_tokens,
+            temperature,
+            response_model,
+        )
+    else:
+        raise ValueError(f"Unknown provider '{provider}'")
 
 def cached_openai_responses_invoke(
     model_name: str = "gpt-4o-mini",
@@ -270,7 +372,9 @@ __all__ = [
     "get_claude_model_name",
     "cached_llm_invoke",
     "cached_openai_responses_invoke",
-    "_openai_upload_file",      # NEW
+    "_openai_upload_file",
+    "_cached_claude_invoke",      # NEW
+    "_cached_openai_invoke",      # NEW
 ]
 
 def _openai_upload_file(client: "OpenAI", file_path: str):
