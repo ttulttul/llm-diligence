@@ -360,9 +360,8 @@ __all__ = [
     "get_claude_model_name",
     "cached_llm_invoke",
     "_openai_upload_file",
-    "_cached_claude_invoke",      # NEW
-    "_cached_openai_invoke",      # NEW
-    "_cache_and_return_result",
+    "_cached_claude_invoke",
+    "_cached_openai_invoke",
 ]
 
 def _openai_upload_file(client: "OpenAI", file_path: str):
