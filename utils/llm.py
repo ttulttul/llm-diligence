@@ -216,6 +216,10 @@ def _cached_openai_invoke(
     """OpenAI Chat implementation using instructor + caching."""
     if OpenAI is None:
         raise ImportError("openai package not available")
+    # Enforce OpenAI-mini family quirks
+    special_models = {"o4-mini", "o3", "o1", "o1-pro"}
+    if model_name in special_models:
+        temperature = 1                          # required by those models
 
     # Prepare logging text exactly like _pretty_format_user_content does
     pretty = _pretty_format_user_content(user_content)
@@ -261,8 +265,6 @@ def _cached_openai_invoke(
         OpenAI(api_key=os.getenv("OPENAI_API_KEY")),
     )
 
-    # Define models that require the renamed parameter
-    special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     # Build the token-argument dynamically
     token_kwarg = (
         {"max_completion_tokens": max_tokens}
@@ -343,6 +345,10 @@ def cached_openai_responses_invoke(
 
     messages = messages or []
     messages = _format_openai_messages(messages)
+
+    special_models = {"o4-mini", "o3", "o1", "o1-pro"}
+    if model_name in special_models:
+        temperature = 1
 
     # ---- NEW (just after we normalise messages) ----
     if file_path:
