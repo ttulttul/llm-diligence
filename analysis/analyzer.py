@@ -141,7 +141,12 @@ def _run_manual(pdf_path: str,
     try:
         response.source_filename = pdf_path
         response.analyzed_at = datetime.now()
-        response.llm_model = get_claude_model_name()
+        # Record which provider / concrete model produced the answer
+        if provider.lower() == "anthropic":
+            response.llm_model = get_claude_model_name()
+        else:   # OpenAI
+            import os
+            response.llm_model = os.getenv("OPENAI_MODEL_NAME", "gpt-4o-mini")
     except Exception as e:
         logger.error(f"Object returned by llm invocation does not have necessary fields")
         return None
