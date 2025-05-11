@@ -3,12 +3,9 @@ from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 import re
 
-# Assuming .base and .cloud are available if this were in a package structure
-# For the purpose of this output, I'll use relative imports if it was structured,
-# but for a single block I might need to define or mock them.
-# The problem provides base.py and contracts.py, and cloud.py
-# This new model should import from cloud.py
-from .cloud import CloudServiceAgreement, CloudServiceType # From cloud.py
+# Import CommercialAgreement instead of CloudServiceAgreement
+from .contracts import CommercialAgreement
+from .cloud import CloudServiceType # Still needed for service_type field
 # from .base import DiligentizerModel # Not directly, but through CloudServiceAgreement
 # from .contracts import AgreementParty # For the 'parties' field, inherited.
 
@@ -55,16 +52,30 @@ class PrepaymentTerm(BaseModel):
     currency: str = Field(..., description="Currency of the prepayment and credit (e.g., USD, EUR).")
     description: Optional[str] = Field(None, description="Additional details about the prepayment term.")
 
-class TermLetter(CloudServiceAgreement):
+class TermLetter(CommercialAgreement):
     """
     Represents a term letter, order form, or statement of work that details specific commercial terms
-    for cloud services, often supplementing a master service agreement.
+    for services, often supplementing a master service agreement.
     This model captures the specifics of a particular engagement, including selected service plans,
     pricing, subscription terms, and any deviations or additions to the main agreement.
     """
-    # Override or refine fields from CloudServiceAgreement / CustomerAgreement if necessary
-    # provider_name and customer_name are already in CustomerAgreement (and thus CloudServiceAgreement)
-    # agreement_date, effective_date, start_date, end_date are inherited.
+    # Fields that were previously inherited from CustomerAgreement
+    provider_name: str = Field(..., description="The name of the service provider entity")
+    customer_name: str = Field(..., description="The name of the customer entity")
+    start_date: Optional[date] = Field(None, description="The start date of the agreement")
+    end_date: Optional[date] = Field(None, description="The end date of the agreement")
+    auto_renews: Optional[bool] = Field(None, description="Whether the agreement automatically renews")
+    
+    # Fields for cloud service specifics when applicable
+    service_type: Optional[CloudServiceType] = Field(None, description="The type of cloud service provided, if applicable")
+    service_description: Optional[str] = Field(None, description="Description of the services provided")
+    service_level_agreement_exists: bool = Field(False, description="Whether a service level agreement exists")
+    data_processing_terms_exist: bool = Field(False, description="Whether data processing terms exist")
+    acceptable_use_policy_exists: bool = Field(False, description="Whether an acceptable use policy exists")
+    
+    # Termination fields previously from CloudServiceAgreement
+    data_deletion_upon_termination: bool = Field(True, description="Whether customer data is deleted upon termination")
+    data_retrieval_period_days: Optional[int] = Field(None, description="Days allowed for data retrieval after termination")
     
     # Term Letter specific fields
     order_form_title: Optional[str] = Field(description="The title of the order form or term letter document, e.g., 'MailChannels Standard Term Letter'.") # Renamed from agreement_title for clarity, but agreement_title is fine too.
@@ -86,11 +97,14 @@ class TermLetter(CloudServiceAgreement):
     service_plans_ordered: List[ServicePlanDetail] = Field(default_factory=list, description="List of specific service plans and their pricing details included in this order.")
     prepayment_terms_offered: List[PrepaymentTerm] = Field(default_factory=list, description="List of available pre-payment options and their corresponding credits.")
 
-    # Override termination_for_convenience_customer if the order form has specific terms
-    # The default in CloudServiceAgreement is True. For the sample, it's False.
+    # Termination convenience fields
     termination_for_convenience_customer: bool = Field(
-        description="Whether the customer can terminate without cause. This might be restricted by the order form.",
-        default=False # Defaulting to False as term letters often lock in for the term.
+        False,  # Defaulting to False as term letters often lock in for the term
+        description="Whether the customer can terminate without cause. This might be restricted by the order form."
+    )
+    termination_for_convenience_provider: bool = Field(
+        False,
+        description="Whether the provider can terminate without cause."
     )
 
     # The example letter mentions the governing law is from Terms of Service.
