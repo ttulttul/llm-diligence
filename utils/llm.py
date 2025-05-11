@@ -197,23 +197,19 @@ def _cached_claude_invoke(
     )
     
     # Make the API call with instructor
-    try:
-        result = client.chat.completions.create(
-            model=model_name,
-            system=system_message,
-            messages=[
-                {"role": "user", "content": formatted_content}
-            ],
-            max_tokens=max_tokens,
-            temperature=temperature,
-            response_model=response_model
-        )
-    except Exception as e:
-        # For testing purposes, if we're using a mock, it might return a string directly
-        if isinstance(client, MagicMock):
-            result = client.chat.completions.create()
+    result = client.chat.completions.create(
+        model=model_name,
+        system=system_message,
+        messages=[
+            {"role": "user", "content": formatted_content}
+        ],
+        max_tokens=max_tokens,
+        temperature=temperature,
+        response_model=response_model
+    )
 
     _log_llm_response(result)
+
     # Cache the result
     if response_model is not None:
         serialized_result = result.model_dump_json()
