@@ -3,6 +3,18 @@ from typing import List, Optional
 from datetime import date
 from .base import DiligentizerModel
 import re
+from enum import Enum
+
+# Enumeration for agreement party roles
+class AgreementParty(str, Enum):
+    """Enumeration of possible roles a party can have in an agreement."""
+    PROVIDER  = "provider"
+    CUSTOMER  = "customer"
+    EMPLOYER  = "employer"
+    EMPLOYEE  = "employee"
+    LICENSOR  = "licensor"
+    LICENSEE  = "licensee"
+    OTHER     = "other"
 
 
 # Base class for all agreements
