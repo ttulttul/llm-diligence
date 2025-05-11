@@ -82,6 +82,22 @@ def _maybe_use_cached_result(cache_key: str, response_model, log_msg: str):
         return cached_result
     return response_model.model_validate_json(cached_result)
 
+def _cache_and_return_result(result, cache_key: str, response_model):
+    """
+    Persist *result* to the global `cache` and return it unchanged.
+
+    • When *response_model* is provided we store the JSON serialization
+      (result.model_dump_json()) so `_maybe_use_cached_result()` can later
+      rebuild the Pydantic instance.
+
+    • Otherwise we store the raw result object (string / dict / etc.).
+    """
+    if response_model is not None:
+        cache.set(cache_key, result.model_dump_json())
+    else:
+        cache.set(cache_key, result)
+    return result
+
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
     # This is a stub function for testing
@@ -220,16 +236,7 @@ def _cached_claude_invoke(
 
     _log_llm_response(result)
 
-    # Cache the result
-    if response_model is not None:
-        serialized_result = result.model_dump_json()
-        cache.set(cache_key, serialized_result)
-        return result
-    else:
-        # For simple text responses
-        text_result = result
-        cache.set(cache_key, text_result)
-        return text_result
+    return _cache_and_return_result(result, cache_key, response_model)
     # --- original body of cached_llm_invoke END ---
 
 def _cached_openai_invoke(
@@ -309,12 +316,7 @@ def _cached_openai_invoke(
     )
 
     _log_llm_response(result)
-    # Cache + return
-    if response_model is not None:
-        cache.set(cache_key, result.model_dump_json())
-        return result
-    cache.set(cache_key, result)
-    return result
+    return _cache_and_return_result(result, cache_key, response_model)
 
 def cached_llm_invoke(
     model_name: str | None = None,
@@ -360,6 +362,7 @@ __all__ = [
     "_openai_upload_file",
     "_cached_claude_invoke",      # NEW
     "_cached_openai_invoke",      # NEW
+    "_cache_and_return_result",
 ]
 
 def _openai_upload_file(client: "OpenAI", file_path: str):
