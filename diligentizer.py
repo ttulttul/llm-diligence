@@ -267,7 +267,6 @@ def main():
 
         # Make provider_model visible to every worker
         if provider_model:
-            import os
             os.environ["LLM_MODEL_NAME"] = provider_model
 
         # If verbose is configured, override the log level
