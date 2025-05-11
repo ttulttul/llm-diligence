@@ -487,10 +487,10 @@ def main():
             ]
 
             raw = cached_llm_invoke(
-                model_name=provider_model,      # already defined earlier in main()
+                model_name=provider_model,
                 system_message=system_message,
                 user_content=user_content,
-                max_tokens=20,
+                max_tokens=100,
                 temperature=0,
                 provider=provider
             )
@@ -533,9 +533,9 @@ def main():
                         hierarchy_subdir.mkdir(parents=True, exist_ok=True)
 
                         base = _generate_llm_filename_base(result)
-
                         pdf_target  = hierarchy_subdir / f"{base}.pdf"
                         json_target = hierarchy_subdir / f"{base}.json"
+                        logger.info(f"Dataroom target files: {pdf_target} and {json_target}")
 
                         # ensure uniqueness
                         suffix = 1
