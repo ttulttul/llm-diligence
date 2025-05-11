@@ -105,6 +105,9 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
     if model_name is None:
         model_name = get_claude_model_name()
 
+    pretty = _pretty_format_user_content(user_content)
+    logger.info("LLM query (model=%s):\n%s", model_name, pretty)
+
     # Generate a cache key for this specific request
     cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
     
