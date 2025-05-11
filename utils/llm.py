@@ -212,30 +212,14 @@ def _cached_openai_invoke(
     max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
-    reasoning_tokens: int | None = None,     # <-- NEW
-    reasoning_effort: str | None = None,
 ):
     """OpenAI Chat implementation using instructor + caching."""
     if OpenAI is None:
         raise ImportError("openai package not available")
-    if reasoning_effort is None:
-        reasoning_effort = os.environ.get("LLM_REASONING_EFFORT")
     # Enforce OpenAI-mini family quirks
     special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     if model_name in special_models:
         temperature = 1                          # required by those models
-
-    if reasoning_tokens is None:
-        env_val = os.environ.get("LLM_MAX_REASONING_TOKENS")
-        if env_val:
-            try:
-                reasoning_tokens = int(env_val)
-            except ValueError:
-                logger.warning("Invalid LLM_MAX_REASONING_TOKENS=%s", env_val)
-
-    # Default: 10 000 for the “o”-family reasoning models
-    if reasoning_tokens is None and model_name in special_models:
-        reasoning_tokens = 10_000
 
     # Prepare logging text exactly like _pretty_format_user_content does
     pretty = _pretty_format_user_content(user_content)
@@ -244,9 +228,7 @@ def _cached_openai_invoke(
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
         system_message,
-        {"content": user_content,
-         "reasoning_effort": reasoning_effort,
-         "reasoning_tokens": reasoning_tokens},          # NEW
+        {"content": user_content},
         max_tokens,
         response_model,
     )
@@ -289,10 +271,6 @@ def _cached_openai_invoke(
         if model_name in special_models
         else {"max_tokens": max_tokens}
     )
-    if reasoning_effort:
-        token_kwarg["reasoning_effort"] = reasoning_effort
-    if reasoning_tokens is not None:
-        token_kwarg["max_output_tokens"] = reasoning_tokens     # NEW
 
     result = client.chat.completions.create(
         model=model_name,
