@@ -55,15 +55,10 @@ class AutoModel(DiligentizerModel):
                 else:
                     derived_str = derived_models[0]
                 doc_string = doc_string.rstrip() + f" More specific models like {derived_str} derive from this model type."
-            field_descriptions = []
-            for field_name, field_info in model_class.model_fields.items():
-                if field_info.description:
-                    field_descriptions.append(f"- {field_name}: {field_info.description}")
             
             model_descriptions[name] = {
                 "description": doc_string,
                 "class_name": model_class.__name__,
-                "fields": field_descriptions
             }
         return model_descriptions
     
