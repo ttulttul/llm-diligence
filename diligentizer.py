@@ -59,7 +59,8 @@ def save_to_db(db_path, response):
 
 def process_csv_file(csv_input_path, csv_input_column, csv_output_path,
                      column_prefix, model_class, prompt_extra=None,
-                     provider="anthropic"):
+                     provider="anthropic",
+                     provider_model: str | None = None):
     """Process a CSV file, analyzing text in the specified column and outputting results.
     
     Args:
@@ -144,6 +145,7 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path,
                     message_content.append({"type": "text", "text": prompt_extra})
                 
                 response = cached_llm_invoke(
+                    model_name=provider_model,      # << NEW
                     system_message=system_message,
                     user_content=message_content,
                     max_tokens=2000,
@@ -224,6 +226,11 @@ def main():
             default="anthropic",
             help="LLM provider family to use (default: anthropic)"
         )
+        parser.add_argument(
+            "--provider-model",
+            type=str,
+            help="Exact LLM model name to use (overrides the default selected for the provider)"
+        )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
                                  "representation will be copied into a model-hierarchy "
@@ -231,6 +238,16 @@ def main():
         
         args = parser.parse_args()
         provider = args.provider.lower()
+
+        provider_model = args.provider_model
+        # If the user did not supply a model, choose sensible default per-provider
+        if provider == "openai" and not provider_model:
+            provider_model = "gpt-4.1"
+
+        # Make provider_model visible to every worker
+        if provider_model:
+            import os
+            os.environ["LLM_MODEL_NAME"] = provider_model
 
         # If verbose is configured, override the log level
         if args.verbose:
@@ -357,7 +374,8 @@ def main():
                 args.csv_output_column_prefix,
                 model_class,
                 args.prompt_extra,
-                provider
+                provider,
+                provider_model,          # << NEW
             )
             
             if not success:

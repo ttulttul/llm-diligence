@@ -203,7 +203,7 @@ def _cached_claude_invoke(
     # --- original body of cached_llm_invoke END ---
 
 def _cached_openai_invoke(
-    model_name: str = "gpt-4o-mini",
+    model_name: str = "gpt-4.1",
     system_message: str = "",
     user_content: list = [],
     max_tokens: int = 100,
@@ -286,6 +286,9 @@ def cached_llm_invoke(
     Unified entry point.  Set provider to 'anthropic'/'claude' (default)
     or 'openai' to route the request.
     """
+    if model_name is None:
+        # Allow override via environment variable set by CLI
+        model_name = os.environ.get("LLM_MODEL_NAME")
     provider = provider.lower()
     if provider in {"anthropic", "claude"}:
         return _cached_claude_invoke(
@@ -298,7 +301,7 @@ def cached_llm_invoke(
         )
     elif provider == "openai":
         return _cached_openai_invoke(
-            model_name or "gpt-4o-mini",   # sensible default for OpenAI
+            model_name or "gpt-4.1",   # sensible default for OpenAI
             system_message,
             user_content,
             max_tokens,
