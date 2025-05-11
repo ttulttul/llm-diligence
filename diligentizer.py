@@ -247,6 +247,12 @@ def main():
             help="Exact LLM model name to use (overrides the default selected for the provider)"
         )
         parser.add_argument(
+            "--provider-small-model",
+            type=str,
+            help="Exact *small* LLM model to use for lightweight tasks "
+                 "(defaults to --provider-model)"
+        )
+        parser.add_argument(
             "--provider-reasoning-effort",
             choices=["low", "medium", "high"],
             help="OpenAI 'o'-family models accept a reasoning_effort flag "
@@ -278,6 +284,12 @@ def main():
         # Make provider_model visible to every worker
         if provider_model:
             os.environ["LLM_MODEL_NAME"] = provider_model
+
+        # already chose provider_model ↑
+        provider_small_model = args.provider_small_model or provider_model
+        # make it visible to helpers / workers
+        if provider_small_model:
+            os.environ["LLM_SMALL_MODEL_NAME"] = provider_small_model
 
         # If verbose is configured, override the log level
         if args.verbose:
@@ -497,13 +509,13 @@ def main():
             ]
 
             raw = cached_llm_invoke(
-                model_name=provider_model,
+                model_name=provider_small_model,   # was provider_model
                 system_message=system_message,
                 user_content=user_content,
                 max_tokens=1000,
                 temperature=0,
                 provider=provider,
-                response_model=FilenameResponse        # NEW
+                response_model=FilenameResponse
             )
 
             # Expect the LLM to return a FilenameResponse instance; fall back gracefully
