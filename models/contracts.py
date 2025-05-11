@@ -1,16 +1,9 @@
-from pydantic import Field, field_validator, BaseModel
-from typing import List, Optional, Dict, Any
+from pydantic import Field, field_validator
+from typing import List, Optional
 from datetime import date
-from enum import Enum, auto
 from .base import DiligentizerModel
 import re
 
-# Party to an Agreement
-class AgreementParty(BaseModel):
-    """Represents a party to a legal agreement."""
-    party_name: Optional[str] = Field(None, description="The name of a party to an agreement")
-    party_type: Optional[str] = Field(None, description="The type of party (e.g., individual, corporation, LLC)")
-    party_address: Optional[str] = Field(None, description="The address of the party")
 
 # Base class for all agreements
 class Agreement(DiligentizerModel):
@@ -20,7 +13,7 @@ class Agreement(DiligentizerModel):
     agreement_title: Optional[str] = Field(None, description="The title of the agreement")
     agreement_date: Optional[date] = Field(None, description="The date the agreement was signed or executed")
     effective_date: Optional[date] = Field(None, description="The date when the agreement becomes effective")
-    parties: List[AgreementParty] = Field(default_factory=list, description="The parties involved in the agreement")
+    parties: List[str] = Field(default_factory=list, description="Names of the parties involved in the agreement")
     governing_law: Optional[str] = Field(None, description="The jurisdiction's laws governing the agreement")
     term_description: Optional[str] = Field(None, description="Description of the agreement's term")
 
@@ -66,37 +59,6 @@ class EmploymentAgreement(Agreement):
     start_date: Optional[date] = Field(None, description="Employment start date")
     compensation_description: Optional[str] = Field(None, description="Description of compensation terms")
 
-class Salary(BaseModel):
-    """Represents salary details"""
-    annual_amount: float = Field(..., description="The gross annual salary amount.")
-    currency: str = Field(..., description="The currency of the salary (e.g., CAD, USD).")
-    payment_frequency: Optional[str] = Field(None, description="How often the salary is paid (e.g., 'semi-monthly', 'bi-weekly', 'monthly').")
-    effective_date: Optional[date] = Field(None, description="The date from which this salary amount is effective.")
-
-class Bonus(BaseModel):
-    """Represents bonus details"""
-    description: str = Field(..., description="Description of the bonus structure (e.g., performance-based, signing bonus).")
-    amount: Optional[float] = Field(None, description="The specific bonus amount, if fixed.")
-    max_amount: Optional[float] = Field(None, description="The maximum possible bonus amount, if variable (e.g., 'up to' amount).")
-    currency: Optional[str] = Field(None, description="The currency of the bonus.")
-    timing: Optional[str] = Field(None, description="When the bonus is typically paid or assessed (e.g., 'end of March each year', 'within 10 days of execution').")
-    conditions: Optional[str] = Field(None, description="Conditions for receiving the bonus (e.g., 'at the sole discretion of the Company', 'upon successful completion of probation').")
-
-class TerminationClauses(BaseModel):
-    """Details regarding contract termination"""
-    for_cause: Optional[str] = Field(None, description="Conditions and consequences of termination for just cause.")
-    without_cause_employer: Optional[str] = Field(None, description="Conditions and notice/pay requirements for termination by the employer without just cause (e.g., reference to statutory minimums like BC Employment Standards Act).")
-    resignation_employee: Optional[str] = Field(None, description="Notice period required for employee resignation (e.g., 'two weeks prior written notice').")
-
-class RestrictiveCovenants(BaseModel):
-    """Details on non-solicitation, non-competition, etc."""
-    non_solicitation_duration_months: Optional[int] = Field(None, description="Duration in months post-termination for non-solicitation clause.")
-    non_solicitation_scope: Optional[str] = Field(None, description="Description of who/what cannot be solicited (e.g., employees, clients, suppliers).")
-    non_competition_duration_months: Optional[int] = Field(None, description="Duration in months post-termination for non-competition clause.")
-    non_competition_scope: Optional[str] = Field(None, description="Description of the scope of the non-competition clause (e.g., geographic area, type of business).")
-    confidentiality_clause_present: Optional[bool] = Field(None, description="Indicates if a confidentiality clause or agreement is referenced/included.")
-    intellectual_property_assignment: Optional[bool] = Field(None, description="Indicates if there's a clause assigning IP created during employment to the employer.")
-
 class EmploymentContract(EmploymentAgreement):
     """Represents key details extracted from an employment agreement.
     This model captures the comprehensive terms of employment between an employer and employee,
@@ -114,16 +76,26 @@ class EmploymentContract(EmploymentAgreement):
     # Override parties from Agreement base class
     parties: List[str] = Field(default_factory=list, description="The parties involved in the agreement (employer and employee)")
 
-    salary: Salary = Field(..., description="Details about the employee's salary.")
-    
-    bonuses: List[Bonus] = Field(default_factory=list, description="List of applicable bonuses (e.g., signing, performance).")
+    salary_amount: Optional[float] = Field(None, description="Gross annual salary amount")
+    salary_currency: Optional[str] = Field(None, description="Currency of the salary (e.g., CAD, USD)")
+    salary_payment_frequency: Optional[str] = Field(None, description="Salary payment frequency (e.g., bi-weekly)")
+    salary_effective_date: Optional[date] = Field(None, description="Date from which the salary amount is effective")
+
+    bonuses: List[str] = Field(default_factory=list, description="Descriptions of any bonuses (signing, performance, etc.)")
     
     benefits_description: Optional[str] = Field(None, description="General description of entitlement to benefits (e.g., 'participate in group insurance plan'). Specific benefits often listed elsewhere.")
     vacation_policy_description: Optional[str] = Field(None, description="Description of vacation entitlement or reference to policy (e.g., 'Accrued per BC Employment Standards Act and company policy').")
     
-    termination_clauses: Optional[TerminationClauses] = Field(None, description="Details regarding contract termination conditions.")
+    termination_for_cause: Optional[str] = Field(None, description="Conditions/consequences of termination for cause")
+    termination_without_cause_employer: Optional[str] = Field(None, description="Conditions for termination by employer without cause")
+    resignation_employee_notice: Optional[str] = Field(None, description="Notice period required for employee resignation")
     
-    restrictive_covenants: Optional[RestrictiveCovenants] = Field(None, description="Details on non-solicitation, non-competition, confidentiality, and IP clauses.")
+    non_solicitation_duration_months: Optional[int] = Field(None, description="Months for non-solicitation restriction")
+    non_solicitation_scope: Optional[str] = Field(None, description="Scope of non-solicitation restriction")
+    non_competition_duration_months: Optional[int] = Field(None, description="Months for non-compete restriction")
+    non_competition_scope: Optional[str] = Field(None, description="Scope of non-compete restriction")
+    confidentiality_clause_present: Optional[bool] = Field(None, description="True if a confidentiality clause is present")
+    intellectual_property_assignment: Optional[bool] = Field(None, description="True if IP assignment clause is present")
 
     governing_law: Optional[str] = Field(None, description="The jurisdiction's laws governing the agreement (e.g., 'Province of British Columbia').")
     
