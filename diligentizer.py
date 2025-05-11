@@ -5,6 +5,7 @@ import json
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
+import shutil
 
 # Load environment variables from .env file
 load_dotenv()
@@ -213,6 +214,10 @@ def main():
         parser.add_argument("--verbose", action="store_true", help="Be verbose about everything")
         parser.add_argument("--prompt-extra", type=str, 
                            help="Additional text to append to every LLM prompt")
+        parser.add_argument("--dataroom-output-dir", type=str,
+                            help="Root directory where the processed PDF and its JSON "
+                                 "representation will be copied into a model-hierarchy "
+                                 "sub-folder (Contracts/… etc.)")
         
         args = parser.parse_args()
 
@@ -223,6 +228,12 @@ def main():
         # Configure logger with command line arguments
         configure_logger(args.log_level, args.log_file)
         logger.debug("Diligentizer starting up")
+
+        dataroom_output_dir = Path(args.dataroom_output_dir).expanduser().resolve() \
+                              if args.dataroom_output_dir else None
+        if dataroom_output_dir:
+            dataroom_output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Dataroom output will be stored under: {dataroom_output_dir}")
         
         # Get all available models
         models_dict = get_available_models()
@@ -382,6 +393,23 @@ def main():
         csv_writer = None
         max_path_length = 0  # Track the maximum path length for dynamic column creation
         classification_results = []  # Store results temporarily to determine max path length
+
+        def _pluralize(name: str) -> str:
+            # Very simple pluralisation rules sufficient for our model names
+            if name.endswith("Agreement"):
+                return name[:-1] + "s"         # Agreement  -> Agreements
+            if not name.endswith("s"):
+                return name + "s"
+            return name
+
+        def _model_hierarchy_path(model_cls) -> Path:
+            components = []
+            for cls in reversed(model_cls.__mro__):
+                if cls.__name__ in {"object", "BaseModel", "DiligentizerModel"}:
+                    continue
+                components.append(_pluralize(cls.__name__.replace("Agreement", "Contract")
+                                             if cls.__name__ == "Agreement" else _pluralize(cls.__name__)))
+            return Path(*components)
         
         if args.classify_only and args.classify_to_csv:
             logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
@@ -406,7 +434,29 @@ def main():
                     except Exception as e:
                         logger.error(f"Failed to save JSON output: {e}")
                         print(f"Error saving JSON output: {e}")
-                
+
+                # --- dataroom output -----------------------------------------------------
+                if dataroom_output_dir and result:
+                    try:
+                        hierarchy_subdir = dataroom_output_dir / _model_hierarchy_path(result.__class__)
+                        hierarchy_subdir.mkdir(parents=True, exist_ok=True)
+
+                        # Copy original PDF
+                        pdf_target = hierarchy_subdir / Path(file_path).name
+                        if not pdf_target.exists():                                 # avoid duplicate copy
+                            shutil.copy2(file_path, pdf_target)
+
+                        # Dump JSON with same stem
+                        json_target = hierarchy_subdir / (Path(file_path).stem + ".json")
+                        from models import ModelEncoder
+                        with open(json_target, "w") as jf:
+                            json.dump(result.model_dump(), jf, cls=ModelEncoder, indent=2)
+
+                        logger.info(f"Dataroom package created at: {hierarchy_subdir}")
+                    except Exception as e:
+                        logger.error(f"Failed to create dataroom output for {file_path}: {e}", exc_info=True)
+                # -------------------------------------------------------------------------
+
                 # Save to db if requested (only if not already done by process_directory)
                 if args.sqlite and result:
                     logger.info(f"Saving to db: {result}")
