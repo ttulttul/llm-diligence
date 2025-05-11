@@ -45,7 +45,10 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
     
     key_parts = [model_name, system_message, content_str, str(max_tokens), model_class_name]
     combined = "||".join(key_parts)
-    return hashlib.md5(combined.encode()).hexdigest()
+
+    cache_key = hashlib.md5(combined.encode()).hexdigest()
+    logger.info(f"_generate_cache_key({combined}) -> {cache_key}")
+    return cache_key
 
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
@@ -132,7 +135,7 @@ def _cached_claude_invoke(
     model_name: str | None = None,
     system_message: str = "",
     user_content: list = [],
-    max_tokens: int = 100,
+    max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
 ):
@@ -206,7 +209,7 @@ def _cached_openai_invoke(
     model_name: str = "gpt-4.1",
     system_message: str = "",
     user_content: list = [],
-    max_tokens: int = 100,
+    max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
 ):
@@ -277,7 +280,7 @@ def cached_llm_invoke(
     model_name: str | None = None,
     system_message: str = "",
     user_content: list = [],
-    max_tokens: int = 100,
+    max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
     provider: str = "anthropic",           # NEW
