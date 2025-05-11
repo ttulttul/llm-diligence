@@ -237,6 +237,13 @@ def main():
             help="OpenAI 'o'-family models accept a reasoning_effort flag "
                  "(low | medium | high)"
         )
+        parser.add_argument(
+            "--provider-reasoning-tokens",
+            type=int,
+            metavar="N",
+            help="OpenAI 'o'-family reasoning models accept a max_reasoning_tokens "
+                 "parameter.  (default: 10 000 when such a model is used)"
+        )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
                                  "representation will be copied into a model-hierarchy "
@@ -253,6 +260,10 @@ def main():
         provider_reasoning_effort = args.provider_reasoning_effort
         if provider_reasoning_effort:
             os.environ["LLM_REASONING_EFFORT"] = provider_reasoning_effort
+
+        provider_reasoning_tokens = args.provider_reasoning_tokens
+        if provider_reasoning_tokens is not None:
+            os.environ["LLM_MAX_REASONING_TOKENS"] = str(provider_reasoning_tokens)
 
         # Make provider_model visible to every worker
         if provider_model:

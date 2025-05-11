@@ -212,6 +212,7 @@ def _cached_openai_invoke(
     max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
+    reasoning_tokens: int | None = None,     # <-- NEW
     reasoning_effort: str | None = None,
 ):
     """OpenAI Chat implementation using instructor + caching."""
@@ -224,6 +225,18 @@ def _cached_openai_invoke(
     if model_name in special_models:
         temperature = 1                          # required by those models
 
+    if reasoning_tokens is None:
+        env_val = os.environ.get("LLM_MAX_REASONING_TOKENS")
+        if env_val:
+            try:
+                reasoning_tokens = int(env_val)
+            except ValueError:
+                logger.warning("Invalid LLM_MAX_REASONING_TOKENS=%s", env_val)
+
+    # Default: 10 000 for the “o”-family reasoning models
+    if reasoning_tokens is None and model_name in special_models:
+        reasoning_tokens = 10_000
+
     # Prepare logging text exactly like _pretty_format_user_content does
     pretty = _pretty_format_user_content(user_content)
     logger.info("LLM query (provider=openai, model=%s):\n%s", model_name, pretty)
@@ -231,7 +244,9 @@ def _cached_openai_invoke(
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
         system_message,
-        {"content": user_content, "reasoning_effort": reasoning_effort},
+        {"content": user_content,
+         "reasoning_effort": reasoning_effort,
+         "reasoning_tokens": reasoning_tokens},          # NEW
         max_tokens,
         response_model,
     )
@@ -276,6 +291,8 @@ def _cached_openai_invoke(
     )
     if reasoning_effort:
         token_kwarg["reasoning_effort"] = reasoning_effort
+    if reasoning_tokens is not None:
+        token_kwarg["max_reasoning_tokens"] = reasoning_tokens     # NEW
 
     result = client.chat.completions.create(
         model=model_name,
@@ -339,6 +356,7 @@ def cached_openai_responses_invoke(
     top_p: float = 1.0,
     store: bool = True,
     reasoning_effort: str | None = 'low',
+    reasoning_tokens: int | None = None,         # NEW
 ):
     """
     Lightweight wrapper around the OpenAI *Responses* beta API that
@@ -358,6 +376,17 @@ def cached_openai_responses_invoke(
     special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     if model_name in special_models:
         temperature = 1
+
+    if reasoning_tokens is None:
+        env_val = os.environ.get("LLM_MAX_REASONING_TOKENS")
+        if env_val:
+            try:
+                reasoning_tokens = int(env_val)
+            except ValueError:
+                logger.warning("Invalid LLM_MAX_REASONING_TOKENS=%s", env_val)
+
+    if reasoning_tokens is None and model_name in special_models:
+        reasoning_tokens = 10_000
 
     # ---- NEW (just after we normalise messages) ----
     if file_path:
@@ -379,8 +408,10 @@ def cached_openai_responses_invoke(
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
         "",
-        {"messages": messages, "file_path": file_path,
-         "reasoning_effort": reasoning_effort},
+        {"messages": messages,
+         "file_path": file_path,
+         "reasoning_effort": reasoning_effort,
+         "reasoning_tokens": reasoning_tokens},        # NEW
         max_tokens,
         None
     )
@@ -391,7 +422,11 @@ def cached_openai_responses_invoke(
         return cached                    # we stored JSON serialisable dict
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    reasoning_arg = {"effort": reasoning_effort} if reasoning_effort else {}
+    reasoning_arg = {}
+    if reasoning_effort:
+        reasoning_arg["effort"] = reasoning_effort
+    if reasoning_tokens is not None:
+        reasoning_arg["max_tokens"] = reasoning_tokens       # NEW
     response = client.responses.create(
         model=model_name,
         input=messages,
