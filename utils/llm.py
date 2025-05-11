@@ -292,7 +292,7 @@ def _cached_openai_invoke(
     if reasoning_effort:
         token_kwarg["reasoning_effort"] = reasoning_effort
     if reasoning_tokens is not None:
-        token_kwarg["max_reasoning_tokens"] = reasoning_tokens     # NEW
+        token_kwarg["max_output_tokens"] = reasoning_tokens     # NEW
 
     result = client.chat.completions.create(
         model=model_name,
@@ -426,7 +426,7 @@ def cached_openai_responses_invoke(
     if reasoning_effort:
         reasoning_arg["effort"] = reasoning_effort
     if reasoning_tokens is not None:
-        reasoning_arg["max_tokens"] = reasoning_tokens       # NEW
+        reasoning_arg["max_output_tokens"] = reasoning_tokens       # NEW
     response = client.responses.create(
         model=model_name,
         input=messages,
