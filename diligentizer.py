@@ -231,6 +231,12 @@ def main():
             type=str,
             help="Exact LLM model name to use (overrides the default selected for the provider)"
         )
+        parser.add_argument(
+            "--provider-reasoning-effort",
+            choices=["low", "medium", "high"],
+            help="OpenAI 'o'-family models accept a reasoning_effort flag "
+                 "(low | medium | high)"
+        )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
                                  "representation will be copied into a model-hierarchy "
@@ -243,6 +249,10 @@ def main():
         # If the user did not supply a model, choose sensible default per-provider
         if provider == "openai" and not provider_model:
             provider_model = "gpt-4.1"
+
+        provider_reasoning_effort = args.provider_reasoning_effort
+        if provider_reasoning_effort:
+            os.environ["LLM_REASONING_EFFORT"] = provider_reasoning_effort
 
         # Make provider_model visible to every worker
         if provider_model:

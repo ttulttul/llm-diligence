@@ -212,10 +212,13 @@ def _cached_openai_invoke(
     max_tokens: int = 2048,
     temperature: float = 0,
     response_model=None,
+    reasoning_effort: str | None = None,
 ):
     """OpenAI Chat implementation using instructor + caching."""
     if OpenAI is None:
         raise ImportError("openai package not available")
+    if reasoning_effort is None:
+        reasoning_effort = os.environ.get("LLM_REASONING_EFFORT")
     # Enforce OpenAI-mini family quirks
     special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     if model_name in special_models:
@@ -228,7 +231,7 @@ def _cached_openai_invoke(
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
         system_message,
-        user_content,
+        {"content": user_content, "reasoning_effort": reasoning_effort},
         max_tokens,
         response_model,
     )
@@ -271,6 +274,8 @@ def _cached_openai_invoke(
         if model_name in special_models
         else {"max_tokens": max_tokens}
     )
+    if reasoning_effort:
+        token_kwarg["reasoning_effort"] = reasoning_effort
 
     result = client.chat.completions.create(
         model=model_name,
@@ -333,6 +338,7 @@ def cached_openai_responses_invoke(
     temperature: float = 1.0,
     top_p: float = 1.0,
     store: bool = True,
+    reasoning_effort: str | None = None,
 ):
     """
     Lightweight wrapper around the OpenAI *Responses* beta API that
@@ -345,6 +351,9 @@ def cached_openai_responses_invoke(
 
     messages = messages or []
     messages = _format_openai_messages(messages)
+
+    if reasoning_effort is None:
+        reasoning_effort = os.environ.get("LLM_REASONING_EFFORT")
 
     special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     if model_name in special_models:
@@ -370,7 +379,8 @@ def cached_openai_responses_invoke(
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
         "",
-        {"messages": messages, "file_path": file_path},   # CHANGED
+        {"messages": messages, "file_path": file_path,
+         "reasoning_effort": reasoning_effort},
         max_tokens,
         None
     )
@@ -381,11 +391,12 @@ def cached_openai_responses_invoke(
         return cached                    # we stored JSON serialisable dict
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    reasoning_arg = {"effort": reasoning_effort} if reasoning_effort else {}
     response = client.responses.create(
         model=model_name,
         input=messages,
         text={"format": {"type": "text"}},
-        reasoning={},
+        reasoning=reasoning_arg,
         tools=[],
         temperature=temperature,
         max_output_tokens=max_tokens,
