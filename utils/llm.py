@@ -16,6 +16,24 @@ except ImportError:
 # Local
 from utils import logger
 
+def _log_llm_response(result):
+    """
+    Emit the LLM response at INFO level in a readable form.
+    Accepts plain strings, Pydantic models or arbitrary objects.
+    """
+    try:
+        if isinstance(result, str):
+            payload = result
+        elif hasattr(result, "model_dump_json"):      # pydantic-v2
+            payload = result.model_dump_json()
+        elif hasattr(result, "model_dump"):           # pydantic-v1
+            payload = json.dumps(result.model_dump(), default=str)
+        else:
+            payload = str(result)
+    except Exception as exc:                          # never let logging crash the flow
+        payload = f"<unserialisable response: {exc!r}>"
+    logger.info("LLM response: %s", payload)
+
 def get_claude_model_name():
     """Get the Claude model name from environment variable or use default."""
     return os.environ.get("CLAUDE_MODEL_NAME", "claude-3-7-sonnet-20250219")
@@ -160,8 +178,10 @@ def _cached_claude_invoke(
         logger.info("cached_llm_invoke: using cached result")
         # If no response_model is provided, just return the cached string
         if response_model is None:
+            _log_llm_response(cached_result)
             return cached_result
         # Otherwise deserialize the cached result
+        _log_llm_response(cached_result)
         return response_model.model_validate_json(cached_result)
     
     # Initialize Anthropic client
@@ -193,6 +213,7 @@ def _cached_claude_invoke(
         if isinstance(client, MagicMock):
             result = client.chat.completions.create()
 
+    _log_llm_response(result)
     # Cache the result
     if response_model is not None:
         serialized_result = result.model_dump_json()
@@ -236,7 +257,9 @@ def _cached_openai_invoke(
     if cached_result is not None:
         logger.info("cached_llm_invoke (openai): using cached result")
         if response_model is None:
+            _log_llm_response(cached_result)
             return cached_result
+        _log_llm_response(cached_result)
         return response_model.model_validate_json(cached_result)
 
     # Convert list / dict rich-content into plain string for OpenAI
@@ -280,6 +303,7 @@ def _cached_openai_invoke(
         **token_kwarg,                # <-- use correct param name
     )
 
+    _log_llm_response(result)
     # Cache + return
     if response_model is not None:
         cache.set(cache_key, result.model_dump_json())
@@ -397,6 +421,7 @@ def cached_openai_responses_invoke(
     cached = cache.get(cache_key)
     if cached is not None:
         logger.info("cached_openai_responses_invoke: using cached result")
+        _log_llm_response(cached)
         return cached                    # we stored JSON serialisable dict
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -417,6 +442,7 @@ def cached_openai_responses_invoke(
         store=store,
     )
 
+    _log_llm_response(response)
     # Serialise for cache – prefer model_dump_json if available
     try:
         cache.set(cache_key, response.model_dump())
