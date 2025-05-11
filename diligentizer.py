@@ -6,6 +6,7 @@ import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 import shutil
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -465,7 +466,42 @@ def main():
                 components.append(_pluralize(cls.__name__.replace("Agreement", "Contract")
                                              if cls.__name__ == "Agreement" else _pluralize(cls.__name__)))
             return Path(*components)
-        
+
+        def _generate_llm_filename_base(model_instance):
+            """
+            Ask the LLM for a concise, filesystem-safe filename stem (no extension)
+            that describes the document represented by *model_instance*.
+            """
+            from utils.llm import cached_llm_invoke
+
+            system_message = (
+                "You create short, descriptive, filesystem-safe file names for a dataroom. "
+                "Return ONLY the file name (no extension), ≤60 chars, lower-case, words "
+                "separated by underscores; use letters, numbers or underscores only."
+            )
+            user_content = [
+                {"type": "text",
+                 "text": "Generate a filename for the following document:"},
+                {"type": "text",
+                 "text": model_instance.model_dump_json(indent=2)}
+            ]
+
+            raw = cached_llm_invoke(
+                model_name=provider_model,      # already defined earlier in main()
+                system_message=system_message,
+                user_content=user_content,
+                max_tokens=20,
+                temperature=0,
+                provider=provider
+            )
+
+            # normalise / sanitise
+            if not isinstance(raw, str):
+                raw = str(raw)
+            name = raw.strip().strip('"').strip("'")
+            name = re.sub(r"[^0-9a-zA-Z_-]+", "_", name).lower().strip("_")
+            return name[:60] or "document"
+
         if args.classify_only and args.classify_to_csv:
             logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
             print(f"Classification results will be saved to: {args.classify_to_csv}")
@@ -496,13 +532,20 @@ def main():
                         hierarchy_subdir = dataroom_output_dir / _model_hierarchy_path(result.__class__)
                         hierarchy_subdir.mkdir(parents=True, exist_ok=True)
 
-                        # Copy original PDF
-                        pdf_target = hierarchy_subdir / Path(file_path).name
-                        if not pdf_target.exists():                                 # avoid duplicate copy
-                            shutil.copy2(file_path, pdf_target)
+                        base = _generate_llm_filename_base(result)
 
-                        # Dump JSON with same stem
-                        json_target = hierarchy_subdir / (Path(file_path).stem + ".json")
+                        pdf_target  = hierarchy_subdir / f"{base}.pdf"
+                        json_target = hierarchy_subdir / f"{base}.json"
+
+                        # ensure uniqueness
+                        suffix = 1
+                        while pdf_target.exists() or json_target.exists():
+                            pdf_target  = hierarchy_subdir / f"{base}_{suffix}.pdf"
+                            json_target = hierarchy_subdir / f"{base}_{suffix}.json"
+                            suffix += 1
+
+                        shutil.copy2(file_path, pdf_target)
+
                         from models import ModelEncoder
                         with open(json_target, "w") as jf:
                             json.dump(result.model_dump(), jf, cls=ModelEncoder, indent=2)
