@@ -261,12 +261,21 @@ def _cached_openai_invoke(
         OpenAI(api_key=os.getenv("OPENAI_API_KEY")),
     )
 
+    # Define models that require the renamed parameter
+    special_models = {"o4-mini", "o3", "o1", "o1-pro"}
+    # Build the token-argument dynamically
+    token_kwarg = (
+        {"max_completion_tokens": max_tokens}
+        if model_name in special_models
+        else {"max_tokens": max_tokens}
+    )
+
     result = client.chat.completions.create(
         model=model_name,
         messages=messages,
-        max_tokens=max_tokens,
         temperature=temperature,
         response_model=response_model,
+        **token_kwarg,                # <-- use correct param name
     )
 
     # Cache + return
