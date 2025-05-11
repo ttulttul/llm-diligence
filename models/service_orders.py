@@ -53,8 +53,14 @@ class TermLetter(CommercialAgreement):
     precedence_clause: Optional[str] = Field(None, description="Clause stating the order of precedence if this document conflicts with the master agreement.")
 
     # Detailed service and pricing information
-    service_plans_ordered: List[ServicePlanDetail] = Field(default_factory=list, description="List of specific service plans and their pricing details included in this order.")
-    prepayment_terms_offered: List[PrepaymentTerm] = Field(default_factory=list, description="List of available pre-payment options and their corresponding credits.")
+    service_plans_ordered: List[str] = Field(
+        default_factory=list,
+        description="Names or identifiers of the service plans included in this order."
+    )
+    prepayment_terms_offered: List[str] = Field(
+        default_factory=list,
+        description="Descriptions of any pre-payment options offered."
+    )
 
     # Termination convenience fields
     termination_for_convenience_customer: bool = Field(
