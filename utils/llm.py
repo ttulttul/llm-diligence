@@ -232,10 +232,22 @@ def _cached_openai_invoke(
             return cached_result
         return response_model.model_validate_json(cached_result)
 
-    # Convert list content to single string like Anthropic path expects
-    content_str = (
-        "\n".join(user_content) if isinstance(user_content, list) else str(user_content)
-    )
+    # Convert list / dict rich-content into plain string for OpenAI
+    if isinstance(user_content, list):
+        import json as _json
+        parts: list[str] = []
+        for item in user_content:
+            if isinstance(item, dict):
+                # prefer the "text" field if present (Anthropic-style item)
+                if "text" in item:
+                    parts.append(str(item["text"]))
+                else:
+                    parts.append(_json.dumps(item, ensure_ascii=False))
+            else:
+                parts.append(str(item))
+        content_str = "\n".join(parts)
+    else:
+        content_str = str(user_content)
     messages = [
         {"role": "system", "content": system_message},
         {"role": "user", "content": content_str},
