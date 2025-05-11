@@ -13,6 +13,8 @@ try:
 except ImportError:
     OpenAI = None
 
+from typing import Any, Callable
+
 # Local
 from utils import logger
 
@@ -97,6 +99,25 @@ def _cache_and_return_result(result, cache_key: str, response_model):
     else:
         cache.set(cache_key, result)
     return result
+
+def _invoke_with_cache(
+    call_fn: Callable[[], Any],
+    cache_key: str,
+    response_model,
+    cache_hit_msg: str,
+):
+    """
+    Run *call_fn* only when the result is not already cached.
+    Handles cache lookup, logging, call execution and persisting
+    the new result in a single place.
+    """
+    hit = _maybe_use_cached_result(cache_key, response_model, cache_hit_msg)
+    if hit is not None:
+        return hit
+
+    result = call_fn()               # live LLM call
+    _log_llm_response(result)
+    return _cache_and_return_result(result, cache_key, response_model)
 
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
@@ -201,42 +222,26 @@ def _cached_claude_invoke(
 
     # Generate a cache key for this specific request
     cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
-    
-    hit = _maybe_use_cached_result(
-        cache_key,
-        response_model,
+
+    def _do_call():
+        anthropic_client = Anthropic(api_key=api_key)
+        formatted_content = format_content_for_anthropic(user_content)
+        client = instructor.from_anthropic(
+            anthropic_client, mode=instructor.Mode.ANTHROPIC_TOOLS
+        )
+        return client.chat.completions.create(
+            model=model_name,
+            system=system_message,
+            messages=[{"role": "user", "content": formatted_content}],
+            max_tokens=max_tokens,
+            temperature=temperature,
+            response_model=response_model,
+        )
+
+    return _invoke_with_cache(
+        _do_call, cache_key, response_model,
         "cached_llm_invoke: using cached result"
     )
-    if hit is not None:
-        return hit
-    
-    # Initialize Anthropic client
-    anthropic_client = Anthropic(api_key=api_key)
-    
-    # Format the content properly for the API
-    formatted_content = format_content_for_anthropic(user_content)
-    
-    # Set up instructor client
-    client = instructor.from_anthropic(
-        anthropic_client,
-        mode=instructor.Mode.ANTHROPIC_TOOLS
-    )
-    
-    # Make the API call with instructor
-    result = client.chat.completions.create(
-        model=model_name,
-        system=system_message,
-        messages=[
-            {"role": "user", "content": formatted_content}
-        ],
-        max_tokens=max_tokens,
-        temperature=temperature,
-        response_model=response_model
-    )
-
-    _log_llm_response(result)
-
-    return _cache_and_return_result(result, cache_key, response_model)
     # --- original body of cached_llm_invoke END ---
 
 def _cached_openai_invoke(
@@ -266,57 +271,44 @@ def _cached_openai_invoke(
         max_tokens,
         response_model,
     )
-    hit = _maybe_use_cached_result(
-        cache_key,
-        response_model,
-        "cached_llm_invoke (openai): using cached result"
-    )
-    if hit is not None:
-        return hit
 
-    # Convert list / dict rich-content into plain string for OpenAI
-    if isinstance(user_content, list):
-        import json as _json
-        parts: list[str] = []
-        for item in user_content:
-            if isinstance(item, dict):
-                # prefer the "text" field if present (Anthropic-style item)
-                if "text" in item:
+    def _do_call():
+        # Build the message list only when we actually hit the API
+        if isinstance(user_content, list):
+            import json as _json
+            parts = []
+            for item in user_content:
+                if isinstance(item, dict) and "text" in item:
                     parts.append(str(item["text"]))
                 else:
-                    parts.append(_json.dumps(item, ensure_ascii=False))
-            else:
-                parts.append(str(item))
-        content_str = "\n".join(parts)
-    else:
-        content_str = str(user_content)
-    messages = [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": content_str},
-    ]
+                    parts.append(_json.dumps(item, ensure_ascii=False) if isinstance(item, dict) else str(item))
+            content_str = "\n".join(parts)
+        else:
+            content_str = str(user_content)
 
-    # Build instructor-wrapped OpenAI client
-    client = instructor.from_openai(
-        OpenAI(api_key=os.getenv("OPENAI_API_KEY")),
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user",   "content": content_str},
+        ]
+
+        client = instructor.from_openai(OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
+        token_kwarg = (
+            {"max_completion_tokens": max_tokens}
+            if model_name in {"o4-mini", "o3", "o1", "o1-pro"}
+            else {"max_tokens": max_tokens}
+        )
+        return client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            response_model=response_model,
+            **token_kwarg,
+        )
+
+    return _invoke_with_cache(
+        _do_call, cache_key, response_model,
+        "cached_llm_invoke (openai): using cached result"
     )
-
-    # Build the token-argument dynamically
-    token_kwarg = (
-        {"max_completion_tokens": max_tokens}
-        if model_name in special_models
-        else {"max_tokens": max_tokens}
-    )
-
-    result = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-        temperature=temperature,
-        response_model=response_model,
-        **token_kwarg,                # <-- use correct param name
-    )
-
-    _log_llm_response(result)
-    return _cache_and_return_result(result, cache_key, response_model)
 
 def cached_llm_invoke(
     model_name: str | None = None,
@@ -362,6 +354,7 @@ __all__ = [
     "_openai_upload_file",
     "_cached_claude_invoke",
     "_cached_openai_invoke",
+    "_invoke_with_cache",
 ]
 
 def _openai_upload_file(client: "OpenAI", file_path: str):
