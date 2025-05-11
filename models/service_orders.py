@@ -60,8 +60,8 @@ class TermLetter(CommercialAgreement):
     pricing, subscription terms, and any deviations or additions to the main agreement.
     """
     # Fields that were previously inherited from CustomerAgreement
-    provider_name: str = Field(..., description="The name of the service provider entity")
-    customer_name: str = Field(..., description="The name of the customer entity")
+    provider_name: str = Field(..., description="The name of the service provider entity; this is usually found at the top of the letter next to 'From:'")
+    customer_name: str = Field(..., description="The name of the customer entity; this is usually found at the top of the letter next to 'To:'")
     start_date: Optional[date] = Field(None, description="The start date of the agreement")
     end_date: Optional[date] = Field(None, description="The end date of the agreement")
     auto_renews: Optional[bool] = Field(None, description="Whether the agreement automatically renews")
