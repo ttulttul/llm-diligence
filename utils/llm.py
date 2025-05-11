@@ -196,7 +196,8 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
 
 def cached_openai_responses_invoke(
     model_name: str = "gpt-4o-mini",
-    messages: list = None,
+    messages: list | None = None,
+    file_path: str | None = None,          # NEW
     max_tokens: int = 2048,
     temperature: float = 1.0,
     top_p: float = 1.0,
@@ -214,13 +215,29 @@ def cached_openai_responses_invoke(
     messages = messages or []
     messages = _format_openai_messages(messages)
 
+    # ---- NEW (just after we normalise messages) ----
+    if file_path:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        file_id = _openai_upload_file(client, file_path)
+
+        # Prepend a message that contains the uploaded file
+        messages.insert(
+            0,
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_file", "file_id": file_id},
+                ],
+            },
+        )
+
     # Key must include provider to avoid collisions with Anthropic calls
     cache_key = _generate_cache_key(
-        f"openai:{model_name}",          # model_name
-        "",                              # system_message placeholder
-        messages,                        # user_content surrogate
+        f"openai:{model_name}",
+        "",
+        {"messages": messages, "file_path": file_path},   # CHANGED
         max_tokens,
-        None                             # no Pydantic response model
+        None
     )
 
     cached = cache.get(cache_key)
@@ -253,4 +270,30 @@ __all__ = [
     "get_claude_model_name",
     "cached_llm_invoke",
     "cached_openai_responses_invoke",
+    "_openai_upload_file",      # NEW
 ]
+
+def _openai_upload_file(client: "OpenAI", file_path: str):
+    """
+    Upload *file_path* to the OpenAI ‟files” endpoint and return the new file id.
+    Caches by SHA-256 so we do not re-upload identical content in the same run.
+    """
+    import hashlib, pathlib, functools
+
+    abs_path = pathlib.Path(file_path).expanduser().resolve()
+    digest   = hashlib.sha256(abs_path.read_bytes()).hexdigest()
+
+    # keep an in-memory map {digest: file_id} to avoid multiple network calls
+    if not hasattr(_openai_upload_file, "_memo"):
+        _openai_upload_file._memo = {}
+    if digest in _openai_upload_file._memo:
+        return _openai_upload_file._memo[digest]
+
+    resp = client.files.create(
+        file=open(abs_path, "rb"),
+        purpose="user_data",
+    )
+    file_id = resp.id
+    _openai_upload_file._memo[digest] = file_id
+    logger.info("Uploaded %s to OpenAI (file_id=%s)", abs_path.name, file_id)
+    return file_id
