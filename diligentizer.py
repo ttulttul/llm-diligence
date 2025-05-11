@@ -57,7 +57,9 @@ def save_to_db(db_path, response):
     except Exception as e:
         logger.error(f"Error saving to database: {e}", exc_info=True)
 
-def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class, prompt_extra=None):
+def process_csv_file(csv_input_path, csv_input_column, csv_output_path,
+                     column_prefix, model_class, prompt_extra=None,
+                     provider="anthropic"):
     """Process a CSV file, analyzing text in the specified column and outputting results.
     
     Args:
@@ -67,6 +69,7 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
         column_prefix: Prefix for output columns
         model_class: The model class to use for analysis
         prompt_extra: Additional text to append to every LLM prompt
+        provider: LLM provider to use
         
     Returns:
         bool: True if processing was successful, False otherwise
@@ -144,7 +147,8 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
                     system_message=system_message,
                     user_content=message_content,
                     max_tokens=2000,
-                    response_model=model_class
+                    response_model=model_class,
+                    provider=provider
                 )
                 
                 # Add analysis results to the dataframe
@@ -214,12 +218,19 @@ def main():
         parser.add_argument("--verbose", action="store_true", help="Be verbose about everything")
         parser.add_argument("--prompt-extra", type=str, 
                            help="Additional text to append to every LLM prompt")
+        parser.add_argument(
+            "--provider",
+            choices=["anthropic", "openai"],
+            default="anthropic",
+            help="LLM provider family to use (default: anthropic)"
+        )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
                                  "representation will be copied into a model-hierarchy "
                                  "sub-folder (Contracts/… etc.)")
         
         args = parser.parse_args()
+        provider = args.provider.lower()
 
         # If verbose is configured, override the log level
         if args.verbose:
@@ -345,7 +356,8 @@ def main():
                 args.csv_output,
                 args.csv_output_column_prefix,
                 model_class,
-                args.prompt_extra
+                args.prompt_extra,
+                provider
             )
             
             if not success:
@@ -363,7 +375,8 @@ def main():
                 args.parallel,
                 classify_only,
                 prompt_extra=args.prompt_extra,
-                crawl_limit=args.crawl_limit
+                crawl_limit=args.crawl_limit,
+                provider=provider
             )
         else:
             # Process a single file
@@ -376,7 +389,12 @@ def main():
             def single_pdf_generator():
                 try:
                     pdf_path = Path(args.pdf)
-                    result = run_analysis(model_class, args.pdf, None, classify_only, prompt_extra=args.prompt_extra)
+                    result = run_analysis(
+                        model_class, args.pdf, None,
+                        classify_only,
+                        prompt_extra=args.prompt_extra,
+                        provider=provider
+                    )
                     yield (True, str(pdf_path), result, None)
                 except Exception as e:
                     logger.error(f"Failed to process {args.pdf}: {e}")

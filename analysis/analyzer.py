@@ -35,11 +35,10 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbo
                 if field_info and field_info.description:
                     print(f"   - {field_name}: {field_info.description}")
 
-def _run_auto(pdf_path: str,
-              model_class: Type[DiligentizerModel],
-              db_path: Optional[str] = None,
-              classify_only: bool = False,
-              prompt_extra: Optional[str] = None) -> Optional[DiligentizerModel]:
+def _run_auto(pdf_path: str, model_class: Type[DiligentizerModel],
+              db_path: Optional[str] = None, classify_only: bool = False,
+              prompt_extra: Optional[str] = None,
+              provider: str = "anthropic") -> Optional[DiligentizerModel]:
     "Use automatic model selection"
 
     logger.info(f"Using AutoModel for {pdf_path}")
@@ -48,7 +47,7 @@ def _run_auto(pdf_path: str,
     
     try:
         # Use the auto model to select the appropriate model
-        auto_model = model_class.from_pdf(pdf_path, models_dict, classify_only, prompt_extra=prompt_extra)
+        auto_model = model_class.from_pdf(pdf_path, models_dict, classify_only, prompt_extra=prompt_extra, provider=provider)
         
         if classify_only:
             logger.info(f"classify_only: returning {auto_model}")
@@ -62,7 +61,7 @@ def _run_auto(pdf_path: str,
             logger.info(f"AutoModel selected: {selected_model_name}")
             
             selected_model_class = models_dict[selected_model_name]
-            return run_analysis(selected_model_class, pdf_path, db_path, prompt_extra=prompt_extra)
+            return run_analysis(selected_model_class, pdf_path, db_path, prompt_extra=prompt_extra, provider=provider)
 
     except Exception as e:
         logger.error(f"Error during auto model selection: {e}", exc_info=True)
@@ -75,14 +74,17 @@ def run_analysis(model_class: Type[DiligentizerModel],
                  pdf_path: str,
                  db_path: Optional[str] = None,
                  classify_only: bool = False,
-                 prompt_extra: Optional[str] = None) -> Optional[DiligentizerModel]:
+                 prompt_extra: Optional[str] = None,
+                 provider: str = "anthropic") -> Optional[DiligentizerModel]:
     """Run the analysis with the selected model. Return the model object."""
 
     # If the model is the automatic model, then dispatch analysis to the auto model.
     if model_class.__name__ == "AutoModel":
-        return _run_auto(pdf_path, model_class, db_path, classify_only, prompt_extra)
+        return _run_auto(pdf_path, model_class, db_path,
+                         classify_only, prompt_extra, provider)
     else:
-        return _run_manual(pdf_path, model_class, db_path, prompt_extra)
+        return _run_manual(pdf_path, model_class, db_path,
+                           prompt_extra, provider)
 
 def _get_prompt(model_class):
     field_descriptions = []
@@ -104,7 +106,8 @@ def _get_prompt(model_class):
 def _run_manual(pdf_path: str,
                 model_class: DiligentizerModel,
                 db_path: Optional[str] = None,
-                prompt_extra: Optional[str] = None) -> Optional[DiligentizerModel]:
+                prompt_extra: Optional[str] = None,
+                provider: str = "anthropic") -> Optional[DiligentizerModel]:
     "Get the LLM to analyze the document using the specified model"
 
     logger.info(f"Analyzing {pdf_path} with {model_class.__name__}")
@@ -128,7 +131,8 @@ def _run_manual(pdf_path: str,
             system_message="You are a document analysis assistant that extracts structured information from documents.",
             user_content=message_content,
             max_tokens=2000,
-            response_model=model_class
+            response_model=model_class,
+            provider=provider
         )
     except Exception as e:
         logger.error(f"Failed to invoke llm: {e}")

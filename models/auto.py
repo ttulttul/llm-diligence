@@ -94,7 +94,8 @@ class AutoModel(DiligentizerModel):
     
     @staticmethod
     def _select_model_with_llm(pdf_input: Any, models_dict: Dict[str, Type[DiligentizerModel]], 
-                              phase_description: str, prompt_extra: Optional[str] = None) -> AutoDocumentClassification:
+                              phase_description: str, prompt_extra: Optional[str] = None,
+                              provider: str = "anthropic") -> AutoDocumentClassification:
         """Use LLM to select the most appropriate model from the provided models."""
         model_descriptions = AutoModel._get_model_descriptions(models_dict)
         
@@ -128,7 +129,8 @@ Respond with only the exact model name (one of the keys from the available model
             system_message="You are a document analysis assistant.",
             user_content=message_content,
             max_tokens=500,
-            response_model=AutoDocumentClassification
+            response_model=AutoDocumentClassification,
+            provider=provider
         )
         
         return response
@@ -156,7 +158,8 @@ Respond with only the exact model name (one of the keys from the available model
     def from_pdf(cls, pdf_path: str,
                  available_models: Dict[str, Type[DiligentizerModel]],
                  classify_only: bool = False,
-                 prompt_extra: Optional[str] = None) -> Union["AutoModel", AutoDocumentClassification]:
+                 prompt_extra: Optional[str] = None,
+                 provider: str = "anthropic") -> Union["AutoModel", AutoDocumentClassification]:
         """Use LLM to select and apply the most appropriate model for the document through a hierarchical process."""
         # Load the PDF for analysis
         pdf_input = PDF.from_path(pdf_path)
@@ -185,7 +188,7 @@ Respond with only the exact model name (one of the keys from the available model
                 phase_description = f"PHASE {phase_num}: Now, select the specific type of {current_model_class.__name__} that best matches this document."
             
             # Select model with LLM
-            phase_response = cls._select_model_with_llm(pdf_input, current_models, phase_description, prompt_extra)
+            phase_response = cls._select_model_with_llm(pdf_input, current_models, phase_description, prompt_extra, provider=provider)
             
             # Get model name and find corresponding key
             model_name = phase_response.model_name
