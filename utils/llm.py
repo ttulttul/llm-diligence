@@ -68,6 +68,20 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
     logger.debug(f"_generate_cache_key({combined}) -> {cache_key}")
     return cache_key
 
+def _maybe_use_cached_result(cache_key: str, response_model, log_msg: str):
+    """
+    If *cache_key* is found, log, deserialize (when needed) and return it.
+    Returns None when the key is absent so caller can continue with the live call.
+    """
+    cached_result = cache.get(cache_key)
+    if cached_result is None:
+        return None
+    logger.info(log_msg)
+    _log_llm_response(cached_result)
+    if response_model is None:
+        return cached_result
+    return response_model.model_validate_json(cached_result)
+
 def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
     # This is a stub function for testing
@@ -172,17 +186,13 @@ def _cached_claude_invoke(
     # Generate a cache key for this specific request
     cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
     
-    # Check if the result is already cached
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        logger.info("cached_llm_invoke: using cached result")
-        # If no response_model is provided, just return the cached string
-        if response_model is None:
-            _log_llm_response(cached_result)
-            return cached_result
-        # Otherwise deserialize the cached result
-        _log_llm_response(cached_result)
-        return response_model.model_validate_json(cached_result)
+    hit = _maybe_use_cached_result(
+        cache_key,
+        response_model,
+        "cached_llm_invoke: using cached result"
+    )
+    if hit is not None:
+        return hit
     
     # Initialize Anthropic client
     anthropic_client = Anthropic(api_key=api_key)
@@ -249,14 +259,13 @@ def _cached_openai_invoke(
         max_tokens,
         response_model,
     )
-    cached_result = cache.get(cache_key)
-    if cached_result is not None:
-        logger.info("cached_llm_invoke (openai): using cached result")
-        if response_model is None:
-            _log_llm_response(cached_result)
-            return cached_result
-        _log_llm_response(cached_result)
-        return response_model.model_validate_json(cached_result)
+    hit = _maybe_use_cached_result(
+        cache_key,
+        response_model,
+        "cached_llm_invoke (openai): using cached result"
+    )
+    if hit is not None:
+        return hit
 
     # Convert list / dict rich-content into plain string for OpenAI
     if isinstance(user_content, list):
