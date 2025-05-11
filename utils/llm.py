@@ -338,7 +338,7 @@ def cached_openai_responses_invoke(
     temperature: float = 1.0,
     top_p: float = 1.0,
     store: bool = True,
-    reasoning_effort: str | None = None,
+    reasoning_effort: str | None = 'low',
 ):
     """
     Lightweight wrapper around the OpenAI *Responses* beta API that
@@ -353,7 +353,7 @@ def cached_openai_responses_invoke(
     messages = _format_openai_messages(messages)
 
     if reasoning_effort is None:
-        reasoning_effort = os.environ.get("LLM_REASONING_EFFORT")
+        reasoning_effort = 'low'
 
     special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     if model_name in special_models:
