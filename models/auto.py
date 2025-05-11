@@ -42,6 +42,19 @@ class AutoModel(DiligentizerModel):
             if name == "auto_AutoModel":  # Skip the auto model itself
                 continue
             doc_string = model_class.__doc__ or "No description available"
+            # Find direct subclasses of this model_class in models_dict
+            derived_models = [
+                child_key
+                for child_key, child_cls in models_dict.items()
+                if model_class in child_cls.__bases__
+            ]
+            if derived_models:
+                # join with comma and space; replace last comma with " and " for nicer grammar
+                if len(derived_models) > 1:
+                    derived_str = ", ".join(derived_models[:-1]) + " and " + derived_models[-1]
+                else:
+                    derived_str = derived_models[0]
+                doc_string = doc_string.rstrip() + f" More specific models like {derived_str} derive from this model type."
             field_descriptions = []
             for field_name, field_info in model_class.model_fields.items():
                 if field_info.description:
