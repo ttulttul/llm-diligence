@@ -395,9 +395,6 @@ def main():
         classification_results = []  # Store results temporarily to determine max path length
 
         def _pluralize(name: str) -> str:
-            # Very simple pluralisation rules sufficient for our model names
-            if name.endswith("Agreement"):
-                return name[:-1] + "s"         # Agreement  -> Agreements
             if not name.endswith("s"):
                 return name + "s"
             return name
