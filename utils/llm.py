@@ -9,6 +9,11 @@ import functools
 from pydantic import BaseModel
 from unittest.mock import MagicMock
 
+try:
+    from openai import OpenAI          # NEW
+except ImportError:                   # NEW
+    OpenAI = None                     # NEW
+
 from utils import logger
 
 def get_claude_model_name():
@@ -95,6 +100,34 @@ def _pretty_format_user_content(content) -> str:
             lines.append(f"content[{idx}]: {item!r}")
     return "\n".join(lines)
 
+def _format_openai_messages(messages):
+    """
+    Ensure every message dict matches the OpenAI ‟responses.create” schema:
+    each dict must contain `role` and its `content` must be a *list* of
+    typed-content items, e.g.  {"type": "input_text", "text": "..."}.
+    Strings are automatically wrapped.
+    """
+    formatted = []
+    for m in messages:
+        if not (isinstance(m, dict) and "role" in m):
+            raise ValueError("Each message must be a dict with a 'role' key")
+        # already in the correct format?
+        if isinstance(m.get("content"), list):
+            formatted.append(m)
+        else:   # wrap plain-text content
+            formatted.append(
+                {
+                    "role": m["role"],
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": str(m["content"])
+                        }
+                    ]
+                }
+            )
+    return formatted
+
 def cached_llm_invoke(model_name: str=None, system_message: str="", user_content: list=[], max_tokens: int=100, 
                      temperature: float=0, response_model=None):
     """Function to invoke the LLM with caching support for Pydantic models."""
@@ -160,3 +193,64 @@ def cached_llm_invoke(model_name: str=None, system_message: str="", user_content
         text_result = result
         cache.set(cache_key, text_result)
         return text_result
+
+def cached_openai_responses_invoke(
+    model_name: str = "gpt-4o-mini",
+    messages: list = None,
+    max_tokens: int = 2048,
+    temperature: float = 1.0,
+    top_p: float = 1.0,
+    store: bool = True,
+):
+    """
+    Lightweight wrapper around the OpenAI *Responses* beta API that
+    transparently caches identical requests.
+    `messages` must be a list of message dicts (role/content); plain strings
+    in `content` are auto-wrapped.
+    """
+    if OpenAI is None:          # imported at top in step 1
+        raise ImportError("openai package not available")
+
+    messages = messages or []
+    messages = _format_openai_messages(messages)
+
+    # Key must include provider to avoid collisions with Anthropic calls
+    cache_key = _generate_cache_key(
+        f"openai:{model_name}",          # model_name
+        "",                              # system_message placeholder
+        messages,                        # user_content surrogate
+        max_tokens,
+        None                             # no Pydantic response model
+    )
+
+    cached = cache.get(cache_key)
+    if cached is not None:
+        logger.info("cached_openai_responses_invoke: using cached result")
+        return cached                    # we stored JSON serialisable dict
+
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    response = client.responses.create(
+        model=model_name,
+        input=messages,
+        text={"format": {"type": "text"}},
+        reasoning={},
+        tools=[],
+        temperature=temperature,
+        max_output_tokens=max_tokens,
+        top_p=top_p,
+        store=store,
+    )
+
+    # Serialise for cache – prefer model_dump_json if available
+    try:
+        cache.set(cache_key, response.model_dump())
+    except AttributeError:
+        # Fallback: assume response is already JSON-serialisable
+        cache.set(cache_key, response)
+
+    return response
+__all__ = [
+    "get_claude_model_name",
+    "cached_llm_invoke",
+    "cached_openai_responses_invoke",
+]
