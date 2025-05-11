@@ -5,7 +5,6 @@ import re
 
 # Import CommercialAgreement instead of CloudServiceAgreement
 from .contracts import CommercialAgreement
-from .cloud import CloudServiceType # Still needed for service_type field
 # from .base import DiligentizerModel # Not directly, but through CloudServiceAgreement
 # from .contracts import AgreementParty # For the 'parties' field, inherited.
 
@@ -67,7 +66,10 @@ class TermLetter(CommercialAgreement):
     auto_renews: Optional[bool] = Field(None, description="Whether the agreement automatically renews")
     
     # Fields for cloud service specifics when applicable
-    service_type: Optional[CloudServiceType] = Field(None, description="The type of cloud service provided, if applicable")
+    service_type: Optional[str] = Field(
+        None,
+        description="Type of cloud service (e.g., 'SaaS', 'IaaS', 'PaaS'); free-form text."
+    )
     service_description: Optional[str] = Field(None, description="Description of the services provided")
     service_level_agreement_exists: bool = Field(False, description="Whether a service level agreement exists")
     data_processing_terms_exist: bool = Field(False, description="Whether data processing terms exist")
@@ -142,12 +144,5 @@ class TermLetter(CommercialAgreement):
             return value # Let Pydantic handle it or fail if unparseable
         return value
 
-    # Example: Set service_type to SAAS by default if these order forms are typically for SaaS
-    # service_type: CloudServiceType = Field(CloudServiceType.SAAS, description="The type of cloud service provided")
-    # CloudServiceAgreement already requires service_type, so the instance must provide it.
-    # It might be good to set a default if these order forms usually refer to a specific type like SaaS.
-    # For MailChannels, it's SaaS.
-    # However, an "Order Form" could be for IaaS or PaaS too. So, better to not default it here
-    # and let it be specified during instantiation, or let the CloudServiceAgreement base handle it.
-    # The base CloudServiceAgreement has `service_type: CloudServiceType = Field(..., description=...)`
-    # This means it's a required field.
+    # Example: You may set a default for service_type if most order forms are for a specific type (e.g., 'SaaS').
+    # However, since order forms could be for IaaS, PaaS, or SaaS, it's best to specify service_type during instantiation.
