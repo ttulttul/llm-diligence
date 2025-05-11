@@ -8,6 +8,20 @@ from dotenv import load_dotenv
 import shutil
 import re
 
+from pydantic import BaseModel, Field, constr     # NEW
+
+class FilenameResponse(BaseModel):               # NEW
+    """
+    Schema the LLM must return when asked for a dataroom filename.
+    The value is a filesystem-safe stem (no extension).
+    """
+    filename: constr(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=60,
+        pattern=r"^[0-9a-zA-Z_]+$"
+    ) = Field(..., description="Lower-case, underscore-separated file name without extension")
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -492,13 +506,17 @@ def main():
                 user_content=user_content,
                 max_tokens=100,
                 temperature=0,
-                provider=provider
+                provider=provider,
+                response_model=FilenameResponse        # NEW
             )
 
-            # normalise / sanitise
-            if not isinstance(raw, str):
-                raw = str(raw)
-            name = raw.strip().strip('"').strip("'")
+            # Expect the LLM to return a FilenameResponse instance; fall back gracefully
+            if isinstance(raw, FilenameResponse):      # NEW
+                name = raw.filename
+            else:                                      # NEW (fallback – previous logic unchanged)
+                if not isinstance(raw, str):
+                    raw = str(raw)
+                name = raw.strip().strip('"').strip("'")
             name = re.sub(r"[^0-9a-zA-Z_-]+", "_", name).lower().strip("_")
             return name[:60] or "document"
 
