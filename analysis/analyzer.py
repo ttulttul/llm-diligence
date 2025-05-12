@@ -1,9 +1,12 @@
+import enum
 import os
 import sys
 import json
-from typing import Dict, Type, Optional, List
+from typing import Dict, Type, Optional, List, Union, get_args, get_origin
 from datetime import datetime
 from instructor.multimodal import PDF
+
+from pydantic import BaseModel
 
 # Import the models package
 import models
@@ -11,6 +14,98 @@ from models.base import DiligentizerModel, get_available_models
 from utils.llm import cached_llm_invoke, get_claude_model_name
 from utils import logger
 
+def generate_llm_schema(model_cls: type[BaseModel], *,
+                        as_json: bool = False,
+                        show_optional_marker: bool = True) -> str | dict:
+    """
+    Produce a *concise* schema description of any **Pydantic-v2** model (e.g.
+    a subclass of `DiligentizerModel`) that is ready to paste straight into an
+    LLM prompt.
+
+    Parameters
+    ----------
+    model_cls:
+        The Pydantic model class you want to describe.
+    as_json:
+        If `True` return a fully structured `dict` (json-serialisable).
+        Otherwise return a compact multi-line `str` that humans – and LLMs –
+        read easily.  Default is the string form.
+    show_optional_marker:
+        When `False` the “(optional)” suffix is suppressed in the string form.
+
+    Examples
+    --------
+    ```python
+    from contracts import CustomerAgreement
+
+    print(generate_llm_schema(CustomerAgreement))
+
+    # Or, if you’d rather embed JSON:
+    schema_dict = generate_llm_schema(CustomerAgreement, as_json=True)
+    prompt = f\"\"\"Extract the following data as JSON matching this schema:
+    {json.dumps(schema_dict, indent=2)}
+    \"\"\"
+    ```
+    """
+    if not issubclass(model_cls, BaseModel):
+        raise TypeError("`model_cls` must inherit from pydantic.BaseModel")
+
+    def _type_to_str(tp: object) -> str:
+        """Human-friendly type → string"""
+        origin = get_origin(tp)
+
+        # plain (non-generic) types -----------------------------------------
+        if origin is None:
+            if isinstance(tp, type):
+                if issubclass(tp, BaseModel):
+                    return tp.__name__
+                if issubclass(tp, enum.Enum):
+                    vals = ", ".join(repr(m.value) for m in tp)
+                    return f"enum[{vals}]"
+                return {
+                    str:  "string",
+                    int:  "integer",
+                    float: "number",
+                    bool: "boolean",
+                    datetime.date: "string(date)",
+                    datetime: "string(date-time)",
+                }.get(tp, tp.__name__)
+            # already a ForwardRef / Annotated / stringified type
+            return str(tp)
+
+        # generic aliases ----------------------------------------------------
+        if origin in (list, List):
+            inner = _type_to_str(get_args(tp)[0]) if get_args(tp) else "any"
+            return f"array<{inner}>"
+        if origin in (dict, Dict):
+            k, v = get_args(tp) or (str, "any")
+            return f"object<{_type_to_str(k)}, {_type_to_str(v)}>"
+        if origin is Union:
+            args = [a for a in get_args(tp) if a is not type(None)]
+            return " | ".join(_type_to_str(a) for a in args)
+        return str(tp)
+
+    # build a JSON-serialisable representation first ------------------------
+    json_schema: dict[str, dict[str, Any]] = {}
+    for name, fld in model_cls.model_fields.items():
+        json_schema[name] = {
+            "type": _type_to_str(fld.annotation),
+            "required": fld.is_required(),
+            **({"description": fld.description} if fld.description else {}),
+        }
+
+    # return early if the caller wants JSON ---------------------------------
+    if as_json:
+        return json_schema
+
+    # otherwise serialise to a compact, prompt-friendly string --------------
+    lines: list[str] = [f"{model_cls.__name__} {{"]  # opening brace purely stylistic
+    for name, meta in json_schema.items():
+        optional = "" if meta["required"] or not show_optional_marker else " (optional)"
+        desc     = f" — {meta['description']}" if "description" in meta else ""
+        lines.append(f"  {name}: {meta['type']}{optional}{desc}")
+    lines.append("}")  # closing brace
+    return "\n".join(lines)
 
 def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbose: bool = False) -> None:
     """Print a formatted list of all available models.
@@ -88,6 +183,8 @@ def run_analysis(model_class: Type[DiligentizerModel],
                  provider_max_tokens: int | None = None) -> Optional[DiligentizerModel]:
     """Run the analysis with the selected model. Return the model object."""
 
+    logger.info(f"run_analysis: {pdf_path}, max_tokens={provider_max_tokens}")
+
     # If the model is the automatic model, then dispatch analysis to the auto model.
     if model_class.__name__ == "AutoModel":
         return _run_auto(pdf_path, model_class, db_path,
@@ -97,18 +194,16 @@ def run_analysis(model_class: Type[DiligentizerModel],
                            prompt_extra, provider, provider_model, provider_max_tokens)
 
 def _get_prompt(model_class):
-    field_descriptions = []
-    for field_name, field_info in model_class.model_fields.items():
-        desc = field_info.description or f"the {field_name}"
-        field_descriptions.append(f'  "{field_name}": "<string: {desc}>"')
-    
-    fields_json = ",\n".join(field_descriptions)
-    
+    model_description = generate_llm_schema(model_class, 
+                        as_json=True,
+                        show_optional_marker=True)
+
     prompt = (
         f"Analyze the following document and extract the key details. "
         f"Your output must be valid JSON matching this exact schema: "
-        f"{{\n{fields_json}\n}}. "
+        f"{{\n{model_description}\n}}. "
         f"Output only the JSON."
+        f"Don't make stuff up. Fill in fields only if you're confident that the field exists in the document."
     )
 
     return prompt

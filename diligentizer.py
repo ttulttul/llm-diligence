@@ -261,8 +261,9 @@ def main():
         parser.add_argument(
             "--provider-max-tokens",
             type=int,
+            default=2048,
             metavar="N",
-            help="Specify the maximum tokens for the LLM model; a model default will be used if not specified"
+            help="Specify the maximum tokens for the LLM model; defaults to 2048"
         )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
@@ -485,8 +486,7 @@ def main():
             for cls in reversed(model_cls.__mro__):
                 if cls.__name__ in {"object", "BaseModel", "DiligentizerModel"}:
                     continue
-                components.append(_pluralize(cls.__name__.replace("Agreement", "Contract")
-                                             if cls.__name__ == "Agreement" else _pluralize(cls.__name__)))
+                components.append(_pluralize(cls.__name__))
             return Path(*components)
 
         def _generate_llm_filename_base(model_instance):
@@ -570,6 +570,7 @@ def main():
                             json_target = hierarchy_subdir / f"{base}_{suffix}.json"
                             suffix += 1
 
+                        logger.info(f"copying file to {pdf_target}")
                         shutil.copy2(file_path, pdf_target)
 
                         from models import ModelEncoder
