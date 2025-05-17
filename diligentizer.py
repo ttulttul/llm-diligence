@@ -354,7 +354,7 @@ def main():
         # step and simply return the result from the auto model, which is effectively a classification.
         classify_only = False
 
-        # The --auto-only switch disables running the model that the auto model selected.
+        # The --classify-only switch disables running the model that the auto model selected.
         if args.classify_only:
             classify_only = True
         
