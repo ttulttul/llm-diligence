@@ -67,7 +67,7 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
     combined = "||".join(key_parts)
 
     cache_key = hashlib.md5(combined.encode()).hexdigest()
-    logger.debug(f"_generate_cache_key({combined}) -> {cache_key}")
+    logger.info("Generated cache key: %s", cache_key)
     return cache_key
 
 def _maybe_use_cached_result(cache_key: str, response_model, log_msg: str):
@@ -77,6 +77,7 @@ def _maybe_use_cached_result(cache_key: str, response_model, log_msg: str):
     """
     cached_result = cache.get(cache_key)
     if cached_result is None:
+        logger.info("Cache MISS for key %s", cache_key)
         return None
     logger.info(log_msg)
     _log_llm_response(cached_result)
@@ -98,6 +99,7 @@ def _cache_and_return_result(result, cache_key: str, response_model):
         cache.set(cache_key, result.model_dump_json())
     else:
         cache.set(cache_key, result)
+    logger.info("Stored new result in cache under key %s", cache_key)
     return result
 
 def _invoke_with_cache(
@@ -114,6 +116,7 @@ def _invoke_with_cache(
     hit = _maybe_use_cached_result(cache_key, response_model, cache_hit_msg)
     if hit is not None:
         return hit
+    logger.info("Cache MISS – performing live LLM call …")
 
     result = call_fn()               # live LLM call
     _log_llm_response(result)
@@ -172,6 +175,26 @@ def _pretty_format_user_content(content) -> str:
             lines.append(f"content[{idx}]: {item!r}")
     return "\n".join(lines)
 
+# --------------------------------------------------------------------------- #
+def _log_request_details(model_name: str, system_message: str,
+                         user_content: list | str, max_tokens: int,
+                         temperature: float, provider: str):
+    """
+    Emit a single INFO entry summarising the outbound LLM request.
+    This is called by both Anthropic and OpenAI wrappers so users
+    always see: provider, model, token budget and a readable copy of
+    the user-visible prompt content.
+    """
+    pretty_content = _pretty_format_user_content(user_content)
+    logger.info(
+        "LLM request [provider=%s | model=%s | max_tokens=%d | temp=%.2f]\n"
+        "system: %s\n"
+        "%s",
+        provider, model_name, max_tokens, temperature,
+        system_message or "<EMPTY>",
+        pretty_content,
+    )
+
 def _format_openai_messages(messages):
     """
     Ensure every message dict matches the OpenAI ‟responses.create” schema:
@@ -217,8 +240,8 @@ def _cached_claude_invoke(
     if model_name is None:
         model_name = get_claude_model_name()
 
-    pretty = _pretty_format_user_content(user_content)
-    logger.info("LLM query (model=%s, max_tokens=%d):\n%s", model_name, max_tokens, pretty)
+    _log_request_details(model_name, system_message, user_content,
+                         max_tokens, temperature, provider="anthropic")
 
     # Generate a cache key for this specific request
     cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
@@ -260,9 +283,8 @@ def _cached_openai_invoke(
     if model_name in special_models:
         temperature = 1                          # required by those models
 
-    # Prepare logging text exactly like _pretty_format_user_content does
-    pretty = _pretty_format_user_content(user_content)
-    logger.info("LLM query (model=%s, max_tokens=%d):\n%s", model_name, max_tokens, pretty)
+    _log_request_details(model_name, system_message, user_content,
+                         max_tokens, temperature, provider="openai")
 
     cache_key = _generate_cache_key(
         f"openai:{model_name}",
@@ -327,7 +349,7 @@ def cached_llm_invoke(
         # Allow override via environment variable set by CLI
         model_name = os.environ.get("LLM_MODEL_NAME")
     provider = provider.lower()
-    logging.info(f'Calling out to {provider} with LLM {model_name}')
+    logger.info("Dispatching call to %s provider (model=%s)", provider, model_name or "<default>")
     if provider in {"anthropic", "claude"}:
         return _cached_claude_invoke(
             model_name,
