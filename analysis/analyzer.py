@@ -194,14 +194,17 @@ def run_analysis(model_class: Type[DiligentizerModel],
                            prompt_extra, provider, provider_model, provider_max_tokens)
 
 def _get_prompt(model_class):
-    model_description = generate_llm_schema(model_class, 
-                        as_json=True,
-                        show_optional_marker=True)
+    model_description = generate_llm_schema(
+        model_class,
+        as_json=True,
+        show_optional_marker=True,
+    )
+    model_description = json.dumps(model_description, indent=2)
 
     prompt = (
         f"Analyze the following document and extract the key details. "
-        f"Your output must be valid JSON matching this exact schema: "
-        f"{{\n{model_description}\n}}. "
+        f"Your output must be valid JSON matching this exact schema:\n"
+        f"{model_description}. "
         f"Output only the JSON."
         f"Don't make stuff up. Fill in fields only if you're confident that the field exists in the document."
     )
