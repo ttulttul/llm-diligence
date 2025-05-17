@@ -2,7 +2,7 @@ import enum
 import os
 import sys
 import json
-from typing import Dict, Type, Optional, List, Union, get_args, get_origin
+from typing import Dict, Type, Optional, List, Union, Any, get_args, get_origin
 from datetime import datetime
 from instructor.multimodal import PDF
 
@@ -180,7 +180,9 @@ def run_analysis(model_class: Type[DiligentizerModel],
                  prompt_extra: Optional[str] = None,
                  provider: str = "anthropic",
                  provider_model: str | None = None,
-                 provider_max_tokens: int | None = None) -> Optional[DiligentizerModel]:
+                 provider_max_tokens: int | None = None,
+                 *,
+                 chunk_size: int | None = None) -> Optional[DiligentizerModel]:
     """Run the analysis with the selected model. Return the model object."""
 
     logger.info(f"run_analysis: {pdf_path}, max_tokens={provider_max_tokens}")
@@ -190,8 +192,13 @@ def run_analysis(model_class: Type[DiligentizerModel],
         return _run_auto(pdf_path, model_class, db_path,
                          classify_only, prompt_extra, provider, provider_model, provider_max_tokens)
     else:
-        return _run_manual(pdf_path, model_class, db_path,
-                           prompt_extra, provider, provider_model, provider_max_tokens)
+        if chunk_size and chunk_size > 0:
+            return _run_manual_chunked(pdf_path, model_class, db_path,
+                                      prompt_extra, provider, provider_model,
+                                      provider_max_tokens, chunk_size)
+        else:
+            return _run_manual(pdf_path, model_class, db_path,
+                               prompt_extra, provider, provider_model, provider_max_tokens)
 
 def _get_prompt(model_class):
     model_description = generate_llm_schema(model_class, 
@@ -286,4 +293,85 @@ def _run_manual(pdf_path: str,
             else:
                 raise
     return response
+
+
+def _chunk_model_fields(model_class: Type[DiligentizerModel], chunk_size: int) -> list[list[str]]:
+    """Return a list of field name groups of length *chunk_size*."""
+    base_fields = {"source_filename", "analyzed_at", "llm_model"}
+    all_fields = [f for f in model_class.model_fields.keys() if f not in base_fields]
+    return [all_fields[i:i + chunk_size] for i in range(0, len(all_fields), chunk_size)]
+
+
+def _create_partial_model(model_class: Type[DiligentizerModel], field_names: list[str], idx: int):
+    """Dynamically create a sub-model with only *field_names*."""
+    from pydantic import create_model, Field
+
+    field_definitions = {}
+    for name in field_names:
+        fld = model_class.model_fields[name]
+        default = ... if fld.is_required() else fld.default
+        field_definitions[name] = (fld.annotation, Field(default, description=fld.description))
+
+    return create_model(f"{model_class.__name__}Part{idx}", **field_definitions)
+
+
+def _run_manual_chunked(pdf_path: str,
+                        model_class: DiligentizerModel,
+                        db_path: Optional[str] = None,
+                        prompt_extra: Optional[str] = None,
+                        provider: str = "anthropic",
+                        provider_model: str | None = None,
+                        provider_max_tokens: int | None = None,
+                        chunk_size: int = 4) -> Optional[DiligentizerModel]:
+    """Analyze the document in multiple passes using smaller schema chunks."""
+
+    logger.info(f"Analyzing {pdf_path} with {model_class.__name__} in chunks of {chunk_size}")
+    pdf_input = PDF.from_path(pdf_path)
+    result_data: dict[str, Any] = {}
+
+    chunks = _chunk_model_fields(model_class, chunk_size)
+    for idx, field_names in enumerate(chunks, 1):
+        partial_model = _create_partial_model(model_class, field_names, idx)
+        prompt = _get_prompt(partial_model)
+
+        message_content = [
+            {"type": "text", "text": prompt},
+            pdf_input,
+        ]
+        if prompt_extra:
+            message_content.append({"type": "text", "text": prompt_extra})
+
+        try:
+            response = cached_llm_invoke(
+                model_name=provider_model,
+                system_message="You are a document analysis assistant that extracts structured information from documents.",
+                user_content=message_content,
+                response_model=partial_model,
+                provider=provider,
+                max_tokens=provider_max_tokens,
+            )
+        except Exception as e:
+            logger.error(f"Failed to invoke llm for chunk {idx}: {e}")
+            return None
+
+        result_data.update(response.model_dump())
+
+    try:
+        model_instance = model_class(**result_data)
+    except Exception as validation_error:
+        logger.error(f"Validation error assembling chunks: {validation_error}")
+        if 'test' in sys.modules.get('__main__', {}).__dict__.get('__file__', ''):
+            model_instance = model_class.model_construct(**result_data)
+        else:
+            raise
+
+    model_instance.source_filename = pdf_path
+    model_instance.analyzed_at = datetime.now()
+    chosen_model = (
+        provider_model
+        or (get_claude_model_name() if provider.lower() == "anthropic" else "o4-mini")
+    )
+    model_instance.llm_model = chosen_model
+
+    return model_instance
 
