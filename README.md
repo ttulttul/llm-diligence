@@ -47,7 +47,7 @@ The caching implementation uses the `diskcache` library with MD5 hashing to crea
 ```bash
 # Clone the repository
 git clone [repository-url]
-cd diligentizer
+cd llm-diligence
 
 # Run the setup script
 ./setup.sh
