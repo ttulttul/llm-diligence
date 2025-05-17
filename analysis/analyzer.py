@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 # Import the models package
 import models
+from models import ModelEncoder      # add right after existing “import models”
 from models.base import DiligentizerModel, get_available_models
 from utils.llm import cached_llm_invoke, get_claude_model_name
 from utils import logger
@@ -358,6 +359,21 @@ def _run_manual_chunked(pdf_path: str,
             return None
 
         result_data.update(response.model_dump())
+
+        # ── pretty-print the partial result of this chunk ────────────────────
+        try:
+            pretty_output = json.dumps(
+                response.model_dump(),
+                indent=2,
+                cls=ModelEncoder,      # handles datetime/date nicely
+            )
+        except TypeError:
+            # fallback: stringify anything ModelEncoder can’t handle
+            pretty_output = json.dumps(response.model_dump(), indent=2, default=str)
+
+        logger.info(
+            f"Chunk {idx} completed. Fields: {field_names}\n{pretty_output}"
+        )
 
     try:
         model_instance = model_class(**result_data)
