@@ -3,7 +3,7 @@ import os
 import sys
 import json
 from typing import Dict, Type, Optional, List, Union, get_args, get_origin
-from datetime import datetime
+from datetime import datetime, date
 from instructor.multimodal import PDF
 
 from pydantic import BaseModel
@@ -67,7 +67,7 @@ def generate_llm_schema(model_cls: type[BaseModel], *,
                     int:  "integer",
                     float: "number",
                     bool: "boolean",
-                    datetime.date: "string(date)",
+                    date: "string(date)",
                     datetime: "string(date-time)",
                 }.get(tp, tp.__name__)
             # already a ForwardRef / Annotated / stringified type
