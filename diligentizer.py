@@ -265,12 +265,21 @@ def main():
             metavar="N",
             help="Specify the maximum tokens for the LLM model; defaults to 2048"
         )
+        parser.add_argument(
+            "--chunk-size",
+            type=int,
+            metavar="N",
+            default=0,
+            help="Analyse the PDF in multiple passes: split the model schema into "
+                 "chunks of N fields (0 = disable, default)"
+        )
         parser.add_argument("--dataroom-output-dir", type=str,
                             help="Root directory where the processed PDF and its JSON "
                                  "representation will be copied into a model-hierarchy "
                                  "sub-folder (Contracts/… etc.)")
         
         args = parser.parse_args()
+        chunk_size = args.chunk_size          # NEW
         provider = args.provider.lower()
 
         provider_model = args.provider_model
@@ -438,7 +447,8 @@ def main():
                 prompt_extra=args.prompt_extra,
                 crawl_limit=args.crawl_limit,
                 provider=provider,
-                provider_model=provider_model
+                provider_model=provider_model,
+                chunk_size=chunk_size            # NEW
             )
         else:
             # Process a single file
@@ -457,7 +467,8 @@ def main():
                         prompt_extra=args.prompt_extra,
                         provider=provider,
                         provider_model=provider_model,
-                        provider_max_tokens=args.provider_max_tokens
+                        provider_max_tokens=args.provider_max_tokens,
+                        chunk_size=chunk_size        # NEW
                     )
                     yield (True, str(pdf_path), result, None)
                 except Exception as e:
