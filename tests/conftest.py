@@ -48,11 +48,9 @@ def mock_employment_data():
         "job_title": "Senior Software Engineer",
         "agreement_date": "2023-02-15",
         "effective_start_date": "2023-03-01",
-        "salary": {
-            "annual_amount": 120000.00,
-            "currency": "USD",
-            "payment_frequency": "bi-weekly"
-        },
+        "salary_amount": 120000.00,
+        "salary_currency": "USD",
+        "salary_payment_frequency": "bi-weekly",
         "bonuses": [
             {
                 "description": "Performance bonus",
@@ -114,11 +112,9 @@ def mock_llm_response_employment():
         "job_title": "Senior Software Engineer",
         "agreement_date": "2023-02-15",
         "effective_start_date": "2023-03-01",
-        "salary": {
-            "annual_amount": 120000.00,
-            "currency": "USD",
-            "payment_frequency": "bi-weekly"
-        },
+        "salary_amount": 120000.00,
+        "salary_currency": "USD",
+        "salary_payment_frequency": "bi-weekly",
         "bonuses": [
             {
                 "description": "Performance bonus",

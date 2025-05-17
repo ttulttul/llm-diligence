@@ -38,8 +38,8 @@ class TestModelClasses:
         assert employment_model.employee == "Jane Doe"
         assert employment_model.job_title == "Senior Software Engineer"
         assert employment_model.agreement_date == date(2023, 2, 15)
-        assert employment_model.salary.annual_amount == 120000.00
-        assert employment_model.salary.currency == "USD"
+        assert employment_model.salary_amount == 120000.00
+        assert employment_model.salary_currency == "USD"
         assert len(employment_model.bonuses) == 1
         
         # Test the JSON serialization
@@ -47,8 +47,8 @@ class TestModelClasses:
         assert "employer" in json_data
         assert "employee" in json_data
         assert "job_title" in json_data
-        assert "salary" in json_data
-        assert "annual_amount" in json_data["salary"]
+        assert "salary_amount" in json_data
+        assert "salary_currency" in json_data
         
     def test_model_encoder(self):
         """Test the ModelEncoder for JSON serialization."""
