@@ -327,6 +327,7 @@ def cached_llm_invoke(
         # Allow override via environment variable set by CLI
         model_name = os.environ.get("LLM_MODEL_NAME")
     provider = provider.lower()
+    logging.info(f'Calling out to {provider} with LLM {model_name}')
     if provider in {"anthropic", "claude"}:
         return _cached_claude_invoke(
             model_name,
