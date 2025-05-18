@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Callable, get_origin, get_args, List, Dict, Union
 from enum import EnumMeta
 from openai import OpenAI
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, ConfigDict
 from pydantic.fields import PydanticUndefined
 from pydantic_core import ValidationError as CoreValidationError
 
@@ -113,7 +113,14 @@ def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
         simplified_type = _simplify_type(mdl_field.annotation)
         _, field_info = _clone_field_v2(name, mdl_field)
         new_fields[name] = (simplified_type, field_info)
-    return create_model(f"{model_cls.__name__}Simplified", **new_fields) 
+    # OpenAI requires `additionalProperties` to be present and set to false.
+    cfg = ConfigDict(extra="forbid")          # ⇒ additionalProperties: false
+
+    return create_model(
+        f"{model_cls.__name__}Simplified",
+        __config__=cfg,                       # attach the “extra-forbid” config
+        **new_fields
+    )
 
 def _complexify_model(
     original_cls: type[BaseModel],
