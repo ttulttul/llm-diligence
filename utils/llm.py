@@ -5,10 +5,46 @@ import os
 from textwrap import indent
 from pathlib import Path
 from typing import Any, Callable
+from typing import Optional, get_origin, get_args, Union
 
 from pydantic_core import ValidationError as CoreValidationError
 
 from utils import logger
+
+# ── response-model “relaxer” ─────────────────────────────────────────
+_RELAXED_MODEL_CACHE: dict[type, type] = {}
+
+def _relax_response_model(model_cls: type):
+    """
+    Return a subclass of *model_cls* where all fields are optional and
+    default to ``None``.  Using this relaxed variant allows validation to
+    succeed even when the LLM omits fields or returns empty values.
+    """
+    if model_cls in _RELAXED_MODEL_CACHE:
+        return _RELAXED_MODEL_CACHE[model_cls]
+
+    annotations: dict[str, object] = {}
+    attrs:       dict[str, object] = {}
+
+    for name, field in model_cls.model_fields.items():
+        tp = field.annotation
+        # Ensure the annotation admits ``None``:
+        args   = get_args(tp)
+        origin = get_origin(tp)
+        if origin is Union and type(None) in args:      # already Optional[…]
+            relaxed_tp = tp
+        else:
+            relaxed_tp = Optional[tp]
+
+        annotations[name] = relaxed_tp
+        # Make the field non-required by giving it a default (None when absent)
+        attrs[name] = field.default if field.default is not None else None
+
+    attrs['__annotations__'] = annotations
+    relaxed_cls = type(f"Relaxed{model_cls.__name__}", (model_cls,), attrs)
+
+    _RELAXED_MODEL_CACHE[model_cls] = relaxed_cls
+    return relaxed_cls
 
 class ValidationError(Exception):
     "Our own model validation error type, representing the situation where the LLM's response can't be matched up with the supplied response_model"
@@ -206,6 +242,11 @@ def cached_llm_invoke(
 ):
     if model_name is None:
         model_name = os.environ.get("LLM_MODEL_NAME")
+
+    # ── NEW: allow partial / empty LLM answers ───────────────────────
+    if response_model is not None:
+        response_model = _relax_response_model(response_model)
+    # ─────────────────────────────────────────────────────────────────
 
     logger.info("Dispatching call to %s provider (model=%s)",
                 provider, model_name or "<default>")
