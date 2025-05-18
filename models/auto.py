@@ -12,6 +12,10 @@ import sys
 from utils.llm import cached_llm_invoke, ValidationError as LLMValidationError
 from utils import logger
 
+class ModelSelectionError(Exception):
+    """Raised when the LLM fails to return a valid model selection."""
+    pass
+
 class AutoDocumentClassification(DiligentizerModel):
     """Model used to receive the selected model name from the LLM.
     This model serves as an interface for the document classification process, capturing the LLM's

@@ -15,6 +15,10 @@ from models.base import DiligentizerModel, get_available_models
 from utils.llm import cached_llm_invoke, ValidationError as LLMValidationError
 from utils import logger
 
+class AnalysisError(Exception):
+    """Raised when a document analysis step fails (e.g. invalid LLM response)."""
+    pass
+
 try:
     from utils.llm_anthropic import get_claude_model_name
 except ImportError:
