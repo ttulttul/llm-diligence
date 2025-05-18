@@ -459,21 +459,17 @@ def main():
 
             # Create a generator that yields a single result for the single PDF
             def single_pdf_generator():
-                try:
-                    pdf_path = Path(args.pdf)
-                    result = run_analysis(
-                        model_class, args.pdf, None,
-                        classify_only,
-                        prompt_extra=args.prompt_extra,
-                        provider=provider,
-                        provider_model=provider_model,
-                        provider_max_tokens=args.provider_max_tokens,
-                        chunk_size=chunk_size        # NEW
-                    )
-                    yield (True, str(pdf_path), result, None)
-                except Exception as e:
-                    logger.error(f"Failed to process {args.pdf}: {e}")
-                    yield (False, str(pdf_path), None, e)
+                pdf_path = Path(args.pdf)
+                result = run_analysis(
+                    model_class, Path(args.pdf), None,
+                    classify_only,
+                    prompt_extra=args.prompt_extra,
+                    provider=provider,
+                    provider_model=provider_model,
+                    provider_max_tokens=args.provider_max_tokens,
+                    chunk_size=chunk_size        # NEW
+                )
+                yield (True, str(pdf_path), result, None)
             
             results_generator = single_pdf_generator()
         
