@@ -9,7 +9,7 @@ from anthropic import Anthropic
 from instructor.multimodal import PDF
 import sys
 
-from utils.llm import cached_llm_invoke
+from utils.llm import cached_llm_invoke, ValidationError as LLMValidationError
 from utils import logger
 
 class AutoDocumentClassification(DiligentizerModel):
@@ -127,14 +127,18 @@ Respond with only the exact model name (one of the keys from the available model
         logger.debug(f"Calling LLM from AutoModel for phase: {phase_description}")
         
         # Make the API call with cached instructor
-        response = cached_llm_invoke(
-            system_message="You are a document analysis assistant.",
-            user_content=message_content,
-            response_model=AutoDocumentClassification,
-            provider=provider,
-            model_name=provider_model,
-            max_tokens=provider_max_tokens
-        )
+        try:
+            response = cached_llm_invoke(
+                system_message="You are a document analysis assistant.",
+                user_content=message_content,
+                response_model=AutoDocumentClassification,
+                provider=provider,
+                model_name=provider_model,
+                max_tokens=provider_max_tokens
+            )
+        except LLMValidationError as e:
+            logger.error("Validation error during model selection: %s", e, exc_info=True)
+            raise ModelSelectionError("LLM failed to select a valid document model") from e
         
         return response
     

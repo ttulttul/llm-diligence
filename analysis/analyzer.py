@@ -12,7 +12,7 @@ from pydantic import BaseModel, create_model, Field
 import models
 from models import ModelEncoder      # add right after existing “import models”
 from models.base import DiligentizerModel, get_available_models
-from utils.llm import cached_llm_invoke
+from utils.llm import cached_llm_invoke, ValidationError as LLMValidationError
 from utils import logger
 
 try:
@@ -157,6 +157,8 @@ def _run_auto(pdf_path: Path, model_class: Type[DiligentizerModel],
               provider_max_tokens: int | None = None) -> Optional[DiligentizerModel]:
     "Use automatic model selection"
 
+    from models.auto import ModelSelectionError
+
     logger.info(f"Using AutoModel for {pdf_path}")
     # Get all available models to pass to AutoModel
     models_dict = get_available_models()
@@ -185,6 +187,11 @@ def _run_auto(pdf_path: Path, model_class: Type[DiligentizerModel],
                                 provider_model=provider_model,
                                 provider_max_tokens=provider_max_tokens)
 
+    except (LLMValidationError, ModelSelectionError) as e:
+        logger.error("Validation error during auto model selection: %s", e, exc_info=True)
+        raise AnalysisError(
+            f"Auto model selection failed for {pdf_path}: invalid LLM response"
+        ) from e
     except Exception as e:
         logger.error(f"Error during auto model selection: {e}", exc_info=True)
         print(f"An error occurred during auto model selection: {e}")
@@ -264,14 +271,20 @@ def _run_manual(pdf_path: Path,
     logger.info(f"Sending document to LLM for analysis: Prompt: {prompt}")
     
     # --- b) cached_llm_invoke ----------------------------------------------
-    response = cached_llm_invoke(
-        model_name=provider_model,
-        system_message="You are a document analysis assistant that extracts structured information from documents.",
-        user_content=message_content,
-        response_model=llm_model_cls,
-        provider=provider,
-        max_tokens=provider_max_tokens
-    )
+    try:
+        response = cached_llm_invoke(
+            model_name=provider_model,
+            system_message="You are a document analysis assistant that extracts structured information from documents.",
+            user_content=message_content,
+            response_model=llm_model_cls,
+            provider=provider,
+            max_tokens=provider_max_tokens
+        )
+    except LLMValidationError as e:
+        logger.error("LLM validation error during analysis: %s", e, exc_info=True)
+        raise AnalysisError(
+            f"Analysis failed for {pdf_path}: invalid LLM response"
+        ) from e
 
     # --- d) unify the branching logic so we always leave with *model_instance*
     if isinstance(response, model_class):
@@ -356,14 +369,20 @@ def _run_manual_chunked(pdf_path: Path,
         if prompt_extra:
             message_content.append({"type": "text", "text": prompt_extra})
 
-        response = cached_llm_invoke(
-            model_name=provider_model,
-            system_message="You are a document analysis assistant that extracts structured information from documents.",
-            user_content=message_content,
-            response_model=partial_model,
-            provider=provider,
-            max_tokens=provider_max_tokens,
-        )
+        try:
+            response = cached_llm_invoke(
+                model_name=provider_model,
+                system_message="You are a document analysis assistant that extracts structured information from documents.",
+                user_content=message_content,
+                response_model=partial_model,
+                provider=provider,
+                max_tokens=provider_max_tokens,
+            )
+        except LLMValidationError as e:
+            logger.error("LLM validation error during chunk %s: %s", idx, e, exc_info=True)
+            raise AnalysisError(
+                f"Chunked analysis failed for {pdf_path}: invalid LLM response"
+            ) from e
 
         result_data.update(response.model_dump())
 
