@@ -1,10 +1,7 @@
-# Standard library
 import hashlib
 import json
 import os
-from unittest.mock import MagicMock
 
-# Third-party
 import diskcache
 import instructor
 from anthropic import Anthropic
@@ -20,7 +17,6 @@ except ImportError:
 
 from typing import Any, Callable
 
-# Local
 from utils import logger
 
 def _log_llm_response(result):
@@ -59,7 +55,6 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
             import pathlib
             if isinstance(obj, pathlib.Path):
                 return str(obj)
-            # NEW – make PDF objects JSON-serialisable & stable
             if PDF is not None and isinstance(obj, PDF):
                 # use the on-disk path (falls back to str(obj) if missing)
                 return str(getattr(obj, "path",
@@ -152,8 +147,8 @@ def format_content_for_anthropic(content):
             elif isinstance(item, dict) and "type" in item and "text" in item:
                 # Already formatted content
                 formatted_content.append(item)
-            elif PDF is not None and isinstance(item, PDF):        # NEW – preserve PDF
-                formatted_content.append(item)                     # NEW
+            elif PDF is not None and isinstance(item, PDF):
+                formatted_content.append(item)
             else:
                 # Try to convert to string if not already formatted
                 formatted_content.append({"type": "text", "text": str(item)})
@@ -187,7 +182,6 @@ def _pretty_format_user_content(content) -> str:
             lines.append(f"content[{idx}]: {item!r}")
     return "\n".join(lines)
 
-# --------------------------------------------------------------------------- #
 def _log_request_details(model_name: str, system_message: str,
                          user_content: list | str, max_tokens: int,
                          temperature: float, provider: str):
@@ -216,7 +210,6 @@ def _cached_claude_invoke(
     response_model=None,
 ):
     """Anthropic/Claude implementation (code formerly in cached_llm_invoke)."""
-    # --- original body of cached_llm_invoke START ---
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -249,7 +242,6 @@ def _cached_claude_invoke(
         _do_call, cache_key, response_model,
         "cached_llm_invoke: using cached result"
     )
-    # --- original body of cached_llm_invoke END ---
 
 def _cached_openai_invoke(
     model_name: str = "gpt-4.1",
@@ -279,12 +271,9 @@ def _cached_openai_invoke(
     )
 
     def _do_call():
-        # Raw OpenAI client (needed for file upload)  --------------- NEW
         raw_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         client     = instructor.from_openai(raw_client)
 
-        # Build a “content” list that mixes uploaded-file references
-        # and plain text segments, matching the OpenAI examples. ---- NEW
         content_parts = []
         if isinstance(user_content, list):
             for item in user_content:
