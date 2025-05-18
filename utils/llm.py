@@ -222,7 +222,6 @@ def cached_llm_invoke(
         )
     except CoreValidationError as exc:
         msg = f"Validation error calling LLM: {str(exc)}"
-        logger.error(msg)
         raise ValidationError(msg)
 
     return response_model_instance
