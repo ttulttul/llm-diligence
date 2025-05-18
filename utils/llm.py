@@ -370,7 +370,7 @@ def _openai_upload_file(client: "OpenAI", file_path: str):
     Upload *file_path* to the OpenAI ‟files” endpoint and return the new file id.
     Caches by SHA-256 so we do not re-upload identical content in the same run.
     """
-    import hashlib, pathlib
+    import pathlib
 
     abs_path = pathlib.Path(file_path).expanduser().resolve()
     digest   = hashlib.sha256(abs_path.read_bytes()).hexdigest()
