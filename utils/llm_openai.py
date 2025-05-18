@@ -140,9 +140,8 @@ def _complexify_model(
     logger.debug(f"_complexify_model: {simplified_instance.model_dump_json(indent=2)}")
 
     try:
-        return original_cls.parse_obj(
-            simplified_instance.dict(by_alias=True)   # keep aliases if any
-        )
+        raw_data = simplified_instance.dict(by_alias=True)   # keep aliases
+        return original_cls.model_validate(raw_data)         # ← use v2 validator
     except CoreValidationError as exc:
         # Emit a detailed error message then re-raise so callers can decide what to do.
         logger.error(
