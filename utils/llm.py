@@ -14,9 +14,9 @@ except ImportError:
     OpenAI = None
 
 try:
-    from instructor.multimodal import PDF          # NEW
-except ImportError:                                # NEW
-    PDF = None                                     # NEW
+    from instructor.multimodal import PDF 
+except ImportError:
+    PDF = None
 
 from typing import Any, Callable
 
