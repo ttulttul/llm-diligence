@@ -1,21 +1,17 @@
+import base64
+import diskcache
+from enum import Enum, EnumMeta
 import hashlib
 import json
 import os
+from pathlib import Path
+from textwrap import indent
+from typing import Any, Callable, get_origin, get_args, List, Dict, Union
 
-import diskcache
-import instructor
 from anthropic import Anthropic
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
-
-try:
-    from instructor.multimodal import PDF 
-except ImportError:
-    PDF = None
-
-from typing import Any, Callable
+from openai import OpenAI
+from pydantic import BaseModel, Field, create_model
+from pydantic.fields import PydanticUndefined 
 
 from utils import logger
 
@@ -37,28 +33,21 @@ def _log_llm_response(result):
         payload = f"<unserialisable response: {exc!r}>"
     logger.debug("LLM response: %s", payload)
 
-def get_claude_model_name():
-    """Get the Claude model name from environment variable or use default."""
-    return os.environ.get("CLAUDE_MODEL_NAME", "claude-3-7-sonnet-20250219")
-
 # Set up cache directory
 cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.cache')
 os.makedirs(cache_dir, exist_ok=True)
 cache = diskcache.Cache(cache_dir)
 
-def _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model):
+def _generate_cache_key(provider, model_name, system_message, user_content, max_tokens, response_model):
     """Generate a unique cache key for the request parameters."""
+
+    model_key = ":".join([provider, model_name])
+
     # Convert user_content to a stable string representation if it's a list
     if isinstance(user_content, list):
-        # Use a custom default function to handle PosixPath objects
         def default_serializer(obj):
-            import pathlib
-            if isinstance(obj, pathlib.Path):
+            if isinstance(obj, Path):
                 return str(obj)
-            if PDF is not None and isinstance(obj, PDF):
-                # use the on-disk path (falls back to str(obj) if missing)
-                return str(getattr(obj, "path",
-                                   getattr(obj, "_file_path", obj)))
             return str(obj)
             
         content_str = json.dumps(user_content, sort_keys=True, default=default_serializer)
@@ -68,7 +57,7 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
     # Include model class name as part of the key if response_model is provided
     model_class_name = response_model.__name__ if response_model else "none"
     
-    key_parts = [model_name, system_message, content_str, str(max_tokens), model_class_name]
+    key_parts = [model_key, system_message, content_str, str(max_tokens), model_class_name]
     combined = "||".join(key_parts)
 
     cache_key = hashlib.md5(combined.encode()).hexdigest()
@@ -127,12 +116,6 @@ def _invoke_with_cache(
     _log_llm_response(result)
     return _cache_and_return_result(result, cache_key, response_model)
 
-def extract_text_from_pdf(pdf_path):
-    """Extract text from a PDF file."""
-    # This is a stub function for testing
-    # In a real implementation, this would use a PDF parsing library
-    return f"Extracted text from {pdf_path}"
-
 def format_content_for_anthropic(content):
     """Format content properly for the Anthropic API."""
     if isinstance(content, list):
@@ -145,27 +128,23 @@ def format_content_for_anthropic(content):
             if isinstance(item, str):
                 formatted_content.append({"type": "text", "text": item})
             elif isinstance(item, dict) and "type" in item and "text" in item:
-                # Already formatted content
                 formatted_content.append(item)
-            elif PDF is not None and isinstance(item, PDF):
-                formatted_content.append(item)
+            elif isinstance(item, Path):
+                file_data = base64.standard_b64encode(open(item, 'rb')).decode("utf-8")
+                formatted_content.append({"type": "document",
+                                          "source": { "type": "base64",
+                                                      "media_type": "application/pdf",
+                                                      "data": file_data }})
             else:
-                # Try to convert to string if not already formatted
-                formatted_content.append({"type": "text", "text": str(item)})
+                raise ValueError("Item is not a Path, dict, or str")
         return formatted_content
-    elif isinstance(content, str) and content.lower().endswith('.pdf'):
-        # Handle PDF files by extracting text
-        extracted_text = extract_text_from_pdf(content)
-        return [{"type": "text", "text": extracted_text}]
     else:
-        # Simple text content
         return [{"type": "text", "text": content}]
 
 def _pretty_format_user_content(content) -> str:
     """Return a human-readable, multi-line string representation of user_content
     where long text fields are printed with real newlines instead of the escaped
     '\n' characters produced by json.dumps."""
-    from textwrap import indent
 
     if not isinstance(content, list):
         return str(content)
@@ -213,23 +192,15 @@ def _cached_claude_invoke(
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
-    # If model_name is None, set it automatically to the default
-    if model_name is None:
-        model_name = get_claude_model_name()
-
     _log_request_details(model_name, system_message, user_content,
                          max_tokens, temperature, provider="anthropic")
 
-    # Generate a cache key for this specific request
-    cache_key = _generate_cache_key(model_name, system_message, user_content, max_tokens, response_model)
+    cache_key = _generate_cache_key("anthropic", model_name, system_message, user_content, max_tokens, response_model)
 
     def _do_call():
         anthropic_client = Anthropic(api_key=api_key)
         formatted_content = format_content_for_anthropic(user_content)
-        client = instructor.from_anthropic(
-            anthropic_client, mode=instructor.Mode.ANTHROPIC_TOOLS
-        )
-        return client.chat.completions.create(
+        return anthropic_client.chat.completions.create(
             model=model_name,
             system=system_message,
             messages=[{"role": "user", "content": formatted_content}],
@@ -243,6 +214,125 @@ def _cached_claude_invoke(
         "cached_llm_invoke: using cached result"
     )
 
+def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
+    """
+    Return a new Pydantic model where every field’s annotation is reduced to one of:
+        str | int | float | bool | dict | list | Enum | Union[...]  (anyOf)
+
+    – Scalars / containers already in that set are kept as-is.
+    – Enum subclasses are preserved.
+    – typing.List / typing.Dict collapse to bare list / dict.
+    – Union / Optional is rebuilt from simplified members (deduplicated when possible).
+    – Nested Pydantic models downgrade to dict.
+    – Everything else falls back to str.
+
+    OpenAI's structured responses needs the model to be simplified in this manner.
+    """
+    BASIC_SCALARS = {str, int, float, bool}
+    BASIC_CONTAINERS = {dict, list}
+    BASIC_ALLOWED = BASIC_SCALARS | BASIC_CONTAINERS
+
+    def _simplify_type(tp: Any) -> Any:
+        """
+        Map *tp* to one of the allowed basic types
+        (str | int | float | bool | dict | list | Enum | Union[..]).
+        For containers, also simplify their parameter types so the JSON-schema
+        still has `items` / `additionalProperties` metadata.
+        """
+        origin = get_origin(tp)
+
+        # ── 1. keep scalars & Enum ──────────────────────────────────────────
+        if tp in {str, int, float, bool} or isinstance(tp, EnumMeta):
+            return tp
+
+        # ── 2. typing.List / list[...] ──────────────────────────────────────
+        if origin in (list, List):
+            args = get_args(tp)
+            elem = _simplify_type(args[0]) if args else str          # default str
+            return List[elem]                                         # → list[elem]
+
+        # ── 3. typing.Dict / dict[...] ──────────────────────────────────────
+        if origin in (dict, Dict):
+            args = get_args(tp)
+            key   = _simplify_type(args[0]) if args else str
+            value = _simplify_type(args[1]) if len(args) == 2 else str
+            return Dict[key, value]                                   # → dict[key, value]
+
+        # ── 4. Union / Optional (JSON-schema anyOf) ────────────────────────
+        if origin is Union:
+            simplified = tuple(_simplify_type(a) for a in get_args(tp))
+            return Union[simplified]                                  # anyOf
+
+        # ── 5. nested Pydantic model → dict ────────────────────────────────
+        if isinstance(tp, type) and issubclass(tp, BaseModel):
+            return Dict[str, Any]                                     # keep JSON object
+
+        # ── 6. fallback ────────────────────────────────────────────────────
+        return str
+
+    def _clone_field_v2(name: str, model_field) -> tuple[type[Any], Field]:
+        """
+        Build a (type, FieldInfo) tuple suitable for `create_model` in Pydantic v2.
+        """
+        # ── 1. decide the default / default_factory ─────────────────────────
+        if model_field.default_factory is not None:
+            default_kw = {"default_factory": model_field.default_factory}
+        elif model_field.default is not PydanticUndefined:
+            default_kw = {"default": model_field.default}
+        else:
+            default_kw = {"default": ...}          # required field
+
+        # ── 2. common metadata we want to carry over ────────────────────────
+        meta_kw = {
+            "alias": model_field.alias,            # None ⇢ no alias set
+            "title": model_field.title,
+            "description": model_field.description,
+            "json_schema_extra": model_field.json_schema_extra,
+            # numeric / length constraints that still exist in v2
+            "gt": getattr(model_field, "gt", None),
+            "ge": getattr(model_field, "ge", None),
+            "lt": getattr(model_field, "lt", None),
+            "le": getattr(model_field, "le", None),
+            "min_length": getattr(model_field, "min_length", None),
+            "max_length": getattr(model_field, "max_length", None),
+            "pattern": getattr(model_field, "pattern", None),
+            "frozen": getattr(model_field, "frozen", None),  # replaces allow_mutation
+        }
+        # strip Nones so we don’t pass unnecessary kwargs
+        meta_kw = {k: v for k, v in meta_kw.items() if v is not None}
+
+        # ── 3. build the new FieldInfo object ───────────────────────────────
+        field_info = Field(**default_kw, **meta_kw)
+
+        return model_field.annotation, field_info
+
+    new_fields: dict[str, tuple[Any, Field]] = {}
+    for name, mdl_field in model_cls.model_fields.items(): 
+        simplified_type = _simplify_type(mdl_field.annotation)
+        _, field_info = _clone_field_v2(name, mdl_field)
+        new_fields[name] = (simplified_type, field_info)
+    return create_model(f"{model_cls.__name__}Simplified", **new_fields) 
+
+def _complexify_model(
+    original_cls: type[BaseModel],
+    simplified_instance: BaseModel,
+) -> BaseModel:
+    """
+    Convert *simplified_instance* (produced by `simplify_pydantic_model`)
+    back into an instance of *original_cls*.
+
+    Pydantic’s own parsing logic handles the up-casting:
+    ─ str → datetime / Path / bytes / …  
+    ─ dict → nested BaseModel  
+    ─ str / int → Enum, etc.
+    """
+
+    logger.info(f"_complexify_model: {simplified_instance.model_dump_json(indent=2)}")
+    return original_cls.parse_obj(
+        simplified_instance.dict(by_alias=True)  # keep aliases if any
+    )
+
+
 def _cached_openai_invoke(
     model_name: str = "gpt-4.1",
     system_message: str = "",
@@ -251,43 +341,37 @@ def _cached_openai_invoke(
     temperature: float = 0,
     response_model=None,
 ):
-    """OpenAI Chat implementation using instructor + caching."""
-    if OpenAI is None:
-        raise ImportError("openai package not available")
-    # Enforce OpenAI-mini family quirks
+    """OpenAI Chat implementation using caching."""
     special_models = {"o4-mini", "o3", "o1", "o1-pro"}
     if model_name in special_models:
-        temperature = 1                          # required by those models
+        temperature = 1 
 
     _log_request_details(model_name, system_message, user_content,
                          max_tokens, temperature, provider="openai")
 
+
     cache_key = _generate_cache_key(
-        f"openai:{model_name}",
+        "openai",
+        model_name,
         system_message,
-        {"content": user_content},
+        user_content,
         max_tokens,
-        response_model,
+        response_model
     )
 
     def _do_call():
         raw_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        client     = instructor.from_openai(raw_client)
+        simplified_response_model = _simplify_pydantic_model(response_model)
 
         content_parts = []
         if isinstance(user_content, list):
             for item in user_content:
-                # PDF → upload once, then reference by file_id
-                if PDF is not None and isinstance(item, PDF):
-                    file_path = str(getattr(item, "path",
-                                             getattr(item, "_file_path", "")))
-                    file_id   = _openai_upload_file(raw_client, file_path)
+                if isinstance(item, Path):
+                    file_id   = _openai_upload_file(raw_client, item)
                     content_parts.append({"type": "input_file", "file_id": file_id})
-                # pre-formatted text dicts
                 elif isinstance(item, dict) and "text" in item:
                     content_parts.append({"type": "input_text",
                                           "text": str(item["text"])})
-                # anything else → stringify
                 else:
                     content_parts.append({"type": "input_text", "text": str(item)})
         else:
@@ -298,19 +382,19 @@ def _cached_openai_invoke(
             {"role": "user",   "content": content_parts},
         ]
 
-        token_kwarg = (
-            {"max_completion_tokens": max_tokens}
-            if model_name in {"o4-mini", "o3", "o1", "o1-pro"}
-            else {"max_tokens": max_tokens}
+        import pprint
+        logger.info(pprint.pprint(response_model.schema()))
+        logger.info(pprint.pprint(simplified_response_model.schema()))
+
+        response = raw_client.responses.parse(
+            model=model_name,
+            input=messages,
+            text_format=simplified_response_model
         )
 
-        return client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            temperature=temperature,
-            response_model=response_model,
-            **token_kwarg,
-        )
+        complex_model = _complexify_model(response_model, response.output_parsed)
+
+        return response.output_parsed
 
     return _invoke_with_cache(
         _do_call, cache_key, response_model,
@@ -357,7 +441,6 @@ def cached_llm_invoke(
         raise ValueError(f"Unknown provider '{provider}'")
 
 __all__ = [
-    "get_claude_model_name",
     "cached_llm_invoke",
     "_openai_upload_file",
     "_cached_claude_invoke",
@@ -365,14 +448,13 @@ __all__ = [
     "_invoke_with_cache",
 ]
 
-def _openai_upload_file(client: "OpenAI", file_path: str):
+def _openai_upload_file(client: "OpenAI", file_path: Path):
     """
     Upload *file_path* to the OpenAI ‟files” endpoint and return the new file id.
     Caches by SHA-256 so we do not re-upload identical content in the same run.
     """
-    import pathlib
 
-    abs_path = pathlib.Path(file_path).expanduser().resolve()
+    abs_path = file_path.expanduser().resolve()
     digest   = hashlib.sha256(abs_path.read_bytes()).hexdigest()
 
     # keep an in-memory map {digest: file_id} to avoid multiple network calls
