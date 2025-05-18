@@ -82,23 +82,15 @@ def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
 
     def _clone_field_v2(name: str, model_field) -> tuple[type[Any], Field]:
         """
-        Build a (type, FieldInfo) tuple suitable for `create_model` in Pydantic v2.
+        Build a (type, FieldInfo) tuple suitable for `create_model` in Pydantic v2,
+        but without propagating defaults – OpenAI rejects `default` in the schema.
         """
-        # ── 1. decide the default / default_factory ─────────────────────────
-        if model_field.default_factory is not None:
-            default_kw = {"default_factory": model_field.default_factory}
-        elif model_field.default is not PydanticUndefined:
-            default_kw = {"default": model_field.default}
-        else:
-            default_kw = {"default": ...}          # required field
-
-        # ── 2. common metadata we want to carry over ────────────────────────
+        # ── only carry metadata we still want ─────────────────────────────
         meta_kw = {
-            "alias": model_field.alias,            # None ⇢ no alias set
-            "title": model_field.title,
-            "description": model_field.description,
+            "alias":          model_field.alias,
+            "title":          model_field.title,
+            "description":    model_field.description,
             "json_schema_extra": model_field.json_schema_extra,
-            # numeric / length constraints that still exist in v2
             "gt": getattr(model_field, "gt", None),
             "ge": getattr(model_field, "ge", None),
             "lt": getattr(model_field, "lt", None),
@@ -106,13 +98,12 @@ def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
             "min_length": getattr(model_field, "min_length", None),
             "max_length": getattr(model_field, "max_length", None),
             "pattern": getattr(model_field, "pattern", None),
-            "frozen": getattr(model_field, "frozen", None),  # replaces allow_mutation
+            "frozen": getattr(model_field, "frozen", None),
         }
-        # strip Nones so we don’t pass unnecessary kwargs
         meta_kw = {k: v for k, v in meta_kw.items() if v is not None}
 
-        # ── 3. build the new FieldInfo object ───────────────────────────────
-        field_info = Field(**default_kw, **meta_kw)
+        # no default / default_factory passed ➜ no "default" in schema
+        field_info = Field(**meta_kw)
 
         return model_field.annotation, field_info
 
