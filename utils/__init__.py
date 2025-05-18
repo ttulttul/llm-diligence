@@ -7,6 +7,16 @@ from typing import Optional
 # Set up default logger
 logger = logging.getLogger("diligentizer")
 
+class _NoTraceFormatter(logging.Formatter):
+    """Formatter that never appends traceback lines."""
+    def format(self, record):
+        saved_exc = record.exc_info        # keep ref
+        record.exc_info = None             # hide traceback
+        try:
+            return super().format(record)  # normal formatting
+        finally:
+            record.exc_info = saved_exc    # restore for other handlers (if any)
+
 def configure_logger(
     log_level: str = "INFO", 
     log_file: Optional[str] = None,
@@ -35,7 +45,7 @@ def configure_logger(
     logger.setLevel(numeric_level)
     
     # Define log format
-    formatter = logging.Formatter(
+    formatter = _NoTraceFormatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
