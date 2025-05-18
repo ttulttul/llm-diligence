@@ -9,6 +9,8 @@ from typing import Optional, get_origin, get_args, Union
 
 from pydantic_core import ValidationError as CoreValidationError
 
+from pydantic import BaseModel, model_validator
+
 from utils import logger
 
 # ── response-model “relaxer” ─────────────────────────────────────────
@@ -16,33 +18,61 @@ _RELAXED_MODEL_CACHE: dict[type, type] = {}
 
 def _relax_response_model(model_cls: type):
     """
-    Return a subclass of *model_cls* where all fields are optional and
-    default to ``None``.  Using this relaxed variant allows validation to
-    succeed even when the LLM omits fields or returns empty values.
+    Return a subclass of *model_cls* where all fields (including those on
+    nested Pydantic models) are optional and default to ``None``.  The relaxed
+    class also pre-processes raw data so that every blank string ("") is
+    turned into ``None`` before Pydantic starts validating – avoiding
+    int/float/enum coercion errors coming from empty strings.
     """
     if model_cls in _RELAXED_MODEL_CACHE:
         return _RELAXED_MODEL_CACHE[model_cls]
+
+    # ── helper to “relax” nested models in annotations ──────────────
+    def _maybe_relax(tp):
+        if isinstance(tp, type) and issubclass(tp, BaseModel):
+            return _relax_response_model(tp)
+        return tp
 
     annotations: dict[str, object] = {}
     attrs:       dict[str, object] = {}
 
     for name, field in model_cls.model_fields.items():
         tp = field.annotation
-        # Ensure the annotation admits ``None``:
-        args   = get_args(tp)
-        origin = get_origin(tp)
-        if origin is Union and type(None) in args:      # already Optional[…]
-            relaxed_tp = tp
-        else:
-            relaxed_tp = Optional[tp]
 
-        annotations[name] = relaxed_tp
-        # Make the field non-required by giving it a default (None when absent)
+        # recursively relax nested Pydantic models appearing in the type
+        origin = get_origin(tp)
+        if origin is Union:
+            new_args = tuple(_maybe_relax(a) for a in get_args(tp))
+            tp = Union[new_args]
+        else:
+            tp = _maybe_relax(tp)
+
+        # ensure Optional[…]
+        if not (origin is Union and type(None) in get_args(tp)):
+            tp = Optional[tp]
+
+        annotations[name] = tp
         attrs[name] = field.default if field.default is not None else None
 
-    attrs['__annotations__'] = annotations
-    relaxed_cls = type(f"Relaxed{model_cls.__name__}", (model_cls,), attrs)
+    # ── blank-string → None normaliser applied BEFORE validation ────
+    def _scrub_empty_strings(value):
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        if isinstance(value, dict):
+            return {k: _scrub_empty_strings(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return type(value)(_scrub_empty_strings(v) for v in value)
+        return value
 
+    @model_validator(mode="before")
+    @classmethod
+    def _strip_blanks(cls, raw):
+        return _scrub_empty_strings(raw)
+
+    attrs['__annotations__'] = annotations
+    attrs['_strip_blanks']   = _strip_blanks  # register the validator
+
+    relaxed_cls = type(f"Relaxed{model_cls.__name__}", (model_cls,), attrs)
     _RELAXED_MODEL_CACHE[model_cls] = relaxed_cls
     return relaxed_cls
 
