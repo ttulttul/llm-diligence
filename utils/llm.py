@@ -59,6 +59,11 @@ def _generate_cache_key(model_name, system_message, user_content, max_tokens, re
             import pathlib
             if isinstance(obj, pathlib.Path):
                 return str(obj)
+            # NEW – make PDF objects JSON-serialisable & stable
+            if PDF is not None and isinstance(obj, PDF):
+                # use the on-disk path (falls back to str(obj) if missing)
+                return str(getattr(obj, "path",
+                                   getattr(obj, "_file_path", obj)))
             return str(obj)
             
         content_str = json.dumps(user_content, sort_keys=True, default=default_serializer)
@@ -274,30 +279,42 @@ def _cached_openai_invoke(
     )
 
     def _do_call():
-        # Build the message list only when we actually hit the API
+        # Raw OpenAI client (needed for file upload)  --------------- NEW
+        raw_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client     = instructor.from_openai(raw_client)
+
+        # Build a “content” list that mixes uploaded-file references
+        # and plain text segments, matching the OpenAI examples. ---- NEW
+        content_parts = []
         if isinstance(user_content, list):
-            import json as _json
-            parts = []
             for item in user_content:
-                if isinstance(item, dict) and "text" in item:
-                    parts.append(str(item["text"]))
+                # PDF → upload once, then reference by file_id
+                if PDF is not None and isinstance(item, PDF):
+                    file_path = str(getattr(item, "path",
+                                             getattr(item, "_file_path", "")))
+                    file_id   = _openai_upload_file(raw_client, file_path)
+                    content_parts.append({"type": "input_file", "file_id": file_id})
+                # pre-formatted text dicts
+                elif isinstance(item, dict) and "text" in item:
+                    content_parts.append({"type": "input_text",
+                                          "text": str(item["text"])})
+                # anything else → stringify
                 else:
-                    parts.append(_json.dumps(item, ensure_ascii=False) if isinstance(item, dict) else str(item))
-            content_str = "\n".join(parts)
+                    content_parts.append({"type": "input_text", "text": str(item)})
         else:
-            content_str = str(user_content)
+            content_parts.append({"type": "input_text", "text": str(user_content)})
 
         messages = [
             {"role": "system", "content": system_message},
-            {"role": "user",   "content": content_str},
+            {"role": "user",   "content": content_parts},
         ]
 
-        client = instructor.from_openai(OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
         token_kwarg = (
             {"max_completion_tokens": max_tokens}
             if model_name in {"o4-mini", "o3", "o1", "o1-pro"}
             else {"max_tokens": max_tokens}
         )
+
         return client.chat.completions.create(
             model=model_name,
             messages=messages,
