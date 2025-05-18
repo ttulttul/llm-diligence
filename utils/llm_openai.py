@@ -13,6 +13,7 @@ from utils.llm import (
     _invoke_with_cache,
     _log_request_details,
     _log_llm_response,
+    warn_on_empty_or_missing_fields
 )
 
 def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
@@ -128,7 +129,7 @@ def _complexify_model(
     ─ str / int → Enum, etc.
     """
 
-    logger.info(f"_complexify_model: {simplified_instance.model_dump_json(indent=2)}")
+    logger.debug(f"_complexify_model: {simplified_instance.model_dump_json(indent=2)}")
 
     try:
         return original_cls.parse_obj(
@@ -137,8 +138,8 @@ def _complexify_model(
     except CoreValidationError as exc:
         # Emit a detailed error message then re-raise so callers can decide what to do.
         logger.error(
-            "Validation error while reconstructing %s from simplified LLM response: %s\nRaw data: %s",
-            original_cls.__name__, exc, simplified_instance.model_dump_json(indent=2)
+            "Validation error while reconstructing %s from simplified LLM response",
+            original_cls.__name__
         )
         raise
 
@@ -215,17 +216,12 @@ def cached_llm_invoke(
             {"role": "user",   "content": content_parts},
         ]
 
-        import pprint
-        logger.info(pprint.pprint(response_model.schema()))
-        logger.info(pprint.pprint(simplified_response_model.schema()))
-
         response = raw_client.responses.parse(
             model=model_name,
             input=messages,
             text_format=simplified_response_model
         )
 
-        from utils.llm import warn_on_empty_or_missing_fields
         warn_on_empty_or_missing_fields(response.output_parsed.model_dump(),
                                         response_model)
 
