@@ -13,6 +13,11 @@ try:
 except ImportError:
     OpenAI = None
 
+try:
+    from instructor.multimodal import PDF          # NEW
+except ImportError:                                # NEW
+    PDF = None                                     # NEW
+
 from typing import Any, Callable
 
 # Local
@@ -142,6 +147,8 @@ def format_content_for_anthropic(content):
             elif isinstance(item, dict) and "type" in item and "text" in item:
                 # Already formatted content
                 formatted_content.append(item)
+            elif PDF is not None and isinstance(item, PDF):        # NEW – preserve PDF
+                formatted_content.append(item)                     # NEW
             else:
                 # Try to convert to string if not already formatted
                 formatted_content.append({"type": "text", "text": str(item)})
