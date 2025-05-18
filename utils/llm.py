@@ -195,34 +195,6 @@ def _log_request_details(model_name: str, system_message: str,
         pretty_content,
     )
 
-def _format_openai_messages(messages):
-    """
-    Ensure every message dict matches the OpenAI ‟responses.create” schema:
-    each dict must contain `role` and its `content` must be a *list* of
-    typed-content items, e.g.  {"type": "input_text", "text": "..."}.
-    Strings are automatically wrapped.
-    """
-    formatted = []
-    for m in messages:
-        if not (isinstance(m, dict) and "role" in m):
-            raise ValueError("Each message must be a dict with a 'role' key")
-        # already in the correct format?
-        if isinstance(m.get("content"), list):
-            formatted.append(m)
-        else:   # wrap plain-text content
-            formatted.append(
-                {
-                    "role": m["role"],
-                    "content": [
-                        {
-                            "type": "input_text",
-                            "text": str(m["content"])
-                        }
-                    ]
-                }
-            )
-    return formatted
-
 def _cached_claude_invoke(
     model_name: str | None = None,
     system_message: str = "",
