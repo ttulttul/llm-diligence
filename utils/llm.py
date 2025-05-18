@@ -6,7 +6,13 @@ from textwrap import indent
 from pathlib import Path
 from typing import Any, Callable
 
+from pydantic_core import ValidationError as CoreValidationError
+
 from utils import logger
+
+class ValidationError(Exception):
+    "Our own model validation error type, representing the situation where the LLM's response can't be matched up with the supplied response_model"
+    pass
 
 def _log_llm_response(result):
     """
@@ -174,13 +180,20 @@ def cached_llm_invoke(
                 provider, model_name or "<default>")
 
     invoke = _load_provider(provider)
-    return invoke(
-        model_name=model_name,
-        system_message=system_message,
-        user_content=user_content,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        response_model=response_model,
-    )
+    try:
+        response_model_instance = invoke(
+            model_name=model_name,
+            system_message=system_message,
+            user_content=user_content,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            response_model=response_model,
+        )
+    except CoreValidationError as exc:
+        msg = f"Validation error calling LLM: {str(exc)}"
+        logger.error(msg)
+        raise ValidationError(msg)
 
-__all__ = ["cached_llm_invoke"]
+    return response_model_instance
+
+__all__ = ["cached_llm_invoke", "ValidationError"]
