@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 from typing import Dict, Type, Optional, List, Union, Any, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model, Field
 
 # Import the models package
 import models
@@ -14,6 +14,11 @@ from models import ModelEncoder      # add right after existing “import models
 from models.base import DiligentizerModel, get_available_models
 from utils.llm import cached_llm_invoke
 from utils import logger
+
+try:
+    from utils.llm_anthropic import get_claude_model_name
+except ImportError:
+    get_claude_model_name = lambda: "claude-2"
 
 def generate_llm_schema(model_cls: type[BaseModel], *,
                         as_json: bool = False,
@@ -131,6 +136,19 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbo
                 if field_info and field_info.description:
                     print(f"   - {field_name}: {field_info.description}")
 
+AUX_LLM_FIELDS = {"analyzed_at", "source_filename", "llm_model"}  # fields to strip
+
+def _trim_model_for_llm(model_cls: Type[DiligentizerModel]):
+    """Return a clone of *model_cls* without runtime-only fields."""
+    field_defs = {}
+    for name, fld in model_cls.model_fields.items():
+        if name in AUX_LLM_FIELDS:
+            continue
+        default = ... if fld.is_required() else fld.default
+        field_defs[name] = (fld.annotation, Field(default,
+                                                  description=fld.description))
+    return create_model(f"{model_cls.__name__}LLM", **field_defs)  # type: ignore
+
 def _run_auto(pdf_path: Path, model_class: Type[DiligentizerModel],
               db_path: Optional[str] = None, classify_only: bool = False,
               prompt_extra: Optional[str] = None,
@@ -228,8 +246,10 @@ def _run_manual(pdf_path: Path,
                 provider_max_tokens: int | None = None) -> Optional[DiligentizerModel]:
     "Get the LLM to analyze the document using the specified model"
 
+    # --- a) build trimmed model & prompt -----------------------------------
     logger.info(f"Analyzing {pdf_path} with {model_class.__name__}")
-    prompt = _get_prompt(model_class)
+    llm_model_cls = _trim_model_for_llm(model_class)
+    prompt = _get_prompt(llm_model_cls)
 
     # Create message content with both text and PDF
     message_content = [
@@ -243,22 +263,19 @@ def _run_manual(pdf_path: Path,
     
     logger.info(f"Sending document to LLM for analysis: Prompt: {prompt}")
     
+    # --- b) cached_llm_invoke ----------------------------------------------
     response = cached_llm_invoke(
         model_name=provider_model,
         system_message="You are a document analysis assistant that extracts structured information from documents.",
         user_content=message_content,
-        response_model=model_class,
+        response_model=llm_model_cls,
         provider=provider,
         max_tokens=provider_max_tokens
     )
-    
-    response.source_filename = pdf_path
-    response.analyzed_at = datetime.now()
 
-    # Ensure we're returning a proper model instance, not just a dict-like object
+    # --- d) unify the branching logic so we always leave with *model_instance*
     if isinstance(response, model_class):
-        # We're good to go.
-        return response
+        model_instance = response
     else:
         logger.info(f"Response from LLM is a {type(response)}, not a model class instance; attempting to convert")
         try:
@@ -272,17 +289,26 @@ def _run_manual(pdf_path: Path,
         try:
             # Create a new instance of the model class with the dictionary data
             model_instance = model_class(**response_dict)
-            return model_instance
         except Exception as validation_error:
             logger.error(f"Validation error: {validation_error}")
             # For testing, create a minimal valid instance with just the required fields
             if 'test' in sys.modules.get('__main__', {}).__dict__.get('__file__', ''):
                 # We're in a test environment, create a minimal valid instance
                 minimal_instance = model_class.model_construct(**response_dict)
-                return minimal_instance
+                model_instance = minimal_instance
             else:
                 raise
-    return response
+
+    # --- e) add the runtime-only fields before returning --------------------
+    model_instance.source_filename = str(pdf_path)
+    model_instance.analyzed_at     = datetime.now()
+    chosen_model = (
+        provider_model
+        or (get_claude_model_name() if provider.lower() == "anthropic" else "o4-mini")
+    )
+    model_instance.llm_model = chosen_model
+
+    return model_instance
 
 
 def _chunk_model_fields(model_class: Type[DiligentizerModel], chunk_size: int) -> list[list[str]]:
