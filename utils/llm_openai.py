@@ -16,7 +16,13 @@ from utils.llm import (
     warn_on_empty_or_missing_fields
 )
 
+# utils/llm_openai.py   (add after imports)
+_SIMPLIFIED_MODEL_CACHE: dict[type[BaseModel], type[BaseModel]] = {}
+
 def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
+    # ── cache check ─────────────────────────────────────────────
+    if model_cls in _SIMPLIFIED_MODEL_CACHE:
+        return _SIMPLIFIED_MODEL_CACHE[model_cls]
     """
     Return a new Pydantic model where every field’s annotation is reduced to one of:
         str | int | float | bool | dict | list | Enum | Union[...]  (anyOf)
@@ -65,9 +71,11 @@ def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
             simplified = tuple(_simplify_type(a) for a in get_args(tp))
             return Union[simplified]                                  # anyOf
 
-        # ── 5. nested Pydantic model → dict ────────────────────────────────
+        # ── 5. nested Pydantic model → simplified model ────────────────────
+        # new – recursively simplify nested models so each gets
+        # `additionalProperties: false` in its own schema.
         if isinstance(tp, type) and issubclass(tp, BaseModel):
-            return Dict[str, Any]                                     # keep JSON object
+            return _simplify_pydantic_model(tp)
 
         # ── 6. fallback ────────────────────────────────────────────────────
         return str
@@ -116,11 +124,13 @@ def _simplify_pydantic_model(model_cls: type[BaseModel]) -> type[BaseModel]:
     # OpenAI requires `additionalProperties` to be present and set to false.
     cfg = ConfigDict(extra="forbid")          # ⇒ additionalProperties: false
 
-    return create_model(
+    simplified_cls = create_model(
         f"{model_cls.__name__}Simplified",
         __config__=cfg,                       # attach the “extra-forbid” config
         **new_fields
     )
+    _SIMPLIFIED_MODEL_CACHE[model_cls] = simplified_cls
+    return simplified_cls
 
 def _complexify_model(
     original_cls: type[BaseModel],
