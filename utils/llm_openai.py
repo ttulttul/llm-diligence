@@ -5,6 +5,7 @@ from enum import EnumMeta
 from openai import OpenAI
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import PydanticUndefined
+from pydantic_core import ValidationError as CoreValidationError
 
 from utils import logger
 from utils.llm import (
@@ -128,9 +129,18 @@ def _complexify_model(
     """
 
     logger.info(f"_complexify_model: {simplified_instance.model_dump_json(indent=2)}")
-    return original_cls.parse_obj(
-        simplified_instance.dict(by_alias=True)  # keep aliases if any
-    )
+
+    try:
+        return original_cls.parse_obj(
+            simplified_instance.dict(by_alias=True)   # keep aliases if any
+        )
+    except CoreValidationError as exc:
+        # Emit a detailed error message then re-raise so callers can decide what to do.
+        logger.error(
+            "Validation error while reconstructing %s from simplified LLM response: %s\nRaw data: %s",
+            original_cls.__name__, exc, simplified_instance.model_dump_json(indent=2)
+        )
+        raise
 
 def _openai_upload_file(client: "OpenAI", file_path: Path):
     """
