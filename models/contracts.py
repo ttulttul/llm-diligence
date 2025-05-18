@@ -22,12 +22,12 @@ class Agreement(DiligentizerModel):
     """A legal document establishing rights and obligations between parties, including effective dates and governing law.
     This base class captures the fundamental elements common to all types of agreements, providing
     a foundation for more specialized agreement types like licenses, employment contracts, etc."""
-    agreement_title: Optional[str] = Field(None, description="The title of the agreement")
-    agreement_date: Optional[date] = Field(None, description="The date the agreement was signed or executed")
-    effective_date: Optional[date] = Field(None, description="The date when the agreement becomes effective")
+    agreement_title: str = Field(..., description="The title of the agreement")
+    agreement_date: date = Field(..., description="The date the agreement was signed or executed")
+    effective_date: date = Field(..., description="The date when the agreement becomes effective")
     parties: List[str] = Field(default_factory=list, description="Names of the parties involved in the agreement")
-    governing_law: Optional[str] = Field(None, description="The jurisdiction's laws governing the agreement")
-    term_description: Optional[str] = Field(None, description="Description of the agreement's term")
+    governing_law: [str] = Field(..., description="The jurisdiction's laws governing the agreement")
+    term_description: [str] = Field(..., description="Description of the agreement's term")
 
 # Base class for commercial agreements
 class CommercialAgreement(Agreement):
@@ -69,7 +69,7 @@ class EmploymentAgreement(Agreement):
     employer: str = Field(..., description="The employer entity")
     employee: str = Field(..., description="The employee name")
     start_date: Optional[date] = Field(None, description="Employment start date")
-    compensation_description: Optional[str] = Field(None, description="Description of compensation terms")
+    compensation_description: str = Field(..., description="Description of compensation terms")
 
 class EmploymentContract(EmploymentAgreement):
     """Represents key details extracted from an employment agreement.
@@ -98,8 +98,8 @@ class EmploymentContract(EmploymentAgreement):
     benefits_description: Optional[str] = Field(None, description="General description of entitlement to benefits (e.g., 'participate in group insurance plan'). Specific benefits often listed elsewhere.")
     vacation_policy_description: Optional[str] = Field(None, description="Description of vacation entitlement or reference to policy (e.g., 'Accrued per BC Employment Standards Act and company policy').")
     
-    termination_for_cause: Optional[str] = Field(None, description="Conditions/consequences of termination for cause")
-    termination_without_cause_employer: Optional[str] = Field(None, description="Conditions for termination by employer without cause")
+    termination_for_cause: str = Field(..., description="Conditions/consequences of termination for cause")
+    termination_without_cause_employer: str = Field(..., description="Conditions for termination by employer without cause")
     resignation_employee_notice: Optional[str] = Field(None, description="Notice period required for employee resignation")
     
     non_solicitation_duration_months: Optional[int] = Field(None, description="Months for non-solicitation restriction")
