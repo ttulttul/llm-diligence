@@ -225,6 +225,10 @@ def cached_llm_invoke(
             text_format=simplified_response_model
         )
 
+        from utils.llm import warn_on_empty_or_missing_fields
+        warn_on_empty_or_missing_fields(response.output_parsed.model_dump(),
+                                        response_model)
+
         complex_model = _complexify_model(response_model, response.output_parsed)
 
         return response.output_parsed

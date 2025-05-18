@@ -32,6 +32,34 @@ def _log_llm_response(result):
         payload = f"<unserialisable response: {exc!r}>"
     logger.debug("LLM response: %s", payload)
 
+# ── empty / missing field warning helpers ────────────────────────────
+def _is_empty(v):
+    if v is None:
+        return True
+    if isinstance(v, (str, bytes)):
+        return len(v.strip()) == 0
+    if isinstance(v, (list, tuple, set, dict)):
+        return len(v) == 0
+    return False
+
+def warn_on_empty_or_missing_fields(raw: dict, response_model: type | None):
+    """
+    Emit a WARNING when *raw* (dict coming from the LLM) is missing fields
+    required by *response_model* or contains “empty” values.
+    """
+    if response_model is None:
+        return
+    expected = response_model.model_fields.keys()
+    missing  = [f for f in expected if f not in raw]
+    empty    = [f for f in expected if f in raw and _is_empty(raw[f])]
+    if missing or empty:
+        parts = []
+        if missing:
+            parts.append(f"missing: {', '.join(sorted(missing))}")
+        if empty:
+            parts.append(f"empty: {', '.join(sorted(empty))}")
+        logger.warning("LLM response has %s", " | ".join(parts))
+
 # Set up cache directory
 cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.cache')
 os.makedirs(cache_dir, exist_ok=True)
@@ -76,7 +104,10 @@ def _maybe_use_cached_result(cache_key: str, response_model, log_msg: str):
     _log_llm_response(cached_result)
     if response_model is None:
         return cached_result
-    return response_model.model_validate_json(cached_result)
+    import json
+    raw_dict = json.loads(cached_result)
+    warn_on_empty_or_missing_fields(raw_dict, response_model)
+    return response_model.model_validate(raw_dict)
 
 def _cache_and_return_result(result, cache_key: str, response_model):
     """

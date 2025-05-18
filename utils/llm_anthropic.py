@@ -58,14 +58,25 @@ def cached_llm_invoke(
     def _do_call():
         anthropic_client = Anthropic(api_key=api_key)
         formatted_content = format_content_for_anthropic(user_content)
-        return anthropic_client.chat.completions.create(
+        raw_resp = anthropic_client.chat.completions.create(
             model=model_name,
             system=system_message,
             messages=[{"role": "user", "content": formatted_content}],
             max_tokens=max_tokens,
             temperature=temperature,
-            response_model=response_model,
         )
+        # Extract JSON string returned by Claude
+        content_json = (
+            raw_resp.content[0].text             # typical Claude reply (list item)
+            if hasattr(raw_resp, "content") else raw_resp
+        )
+        raw_dict = json.loads(content_json)
+
+        from utils.llm import warn_on_empty_or_missing_fields
+        warn_on_empty_or_missing_fields(raw_dict, response_model)
+
+        validated = response_model.model_validate(raw_dict) if response_model else raw_dict
+        return validated
 
     return _invoke_with_cache(
         _do_call, cache_key, response_model,
