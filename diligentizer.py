@@ -10,6 +10,8 @@ import re
 
 from pydantic import BaseModel, Field, constr     # NEW
 
+from analysis.analyzer import AnalysisError   # NEW
+
 class FilenameResponse(BaseModel):               # NEW
     """
     Schema the LLM must return when asked for a dataroom filename.
@@ -460,17 +462,25 @@ def main():
             # Create a generator that yields a single result for the single PDF
             def single_pdf_generator():
                 pdf_path = Path(args.pdf)
-                result = run_analysis(
-                    model_class, Path(args.pdf), None,
-                    classify_only,
-                    prompt_extra=args.prompt_extra,
-                    provider=provider,
-                    provider_model=provider_model,
-                    provider_max_tokens=args.provider_max_tokens,
-                    chunk_size=chunk_size        # NEW
-                )
-                yield (True, str(pdf_path), result, None)
-            
+
+                try:
+                    result = run_analysis(
+                        model_class, pdf_path, None,
+                        classify_only,
+                        prompt_extra=args.prompt_extra,
+                        provider=provider,
+                        provider_model=provider_model,
+                        provider_max_tokens=args.provider_max_tokens,
+                        chunk_size=chunk_size
+                    )
+                    yield (True, str(pdf_path), result, None)
+                except AnalysisError as e:
+                    # Make the failure obvious to the user
+                    logger.error(f"Analysis failed for {pdf_path}: {e}", exc_info=True)
+                    print(f"Analysis failed for {pdf_path}: {e}")
+                    # Signal failure to the main loop; no result will be processed / stored
+                    yield (False, str(pdf_path), None, e)
+
             results_generator = single_pdf_generator()
         
         # Process all results from the generator
