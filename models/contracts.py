@@ -26,8 +26,8 @@ class Agreement(DiligentizerModel):
     agreement_date: date = Field(..., description="The date the agreement was signed or executed")
     effective_date: date = Field(..., description="The date when the agreement becomes effective")
     parties: List[str] = Field(default_factory=list, description="Names of the parties involved in the agreement")
-    governing_law: [str] = Field(..., description="The jurisdiction's laws governing the agreement")
-    term_description: [str] = Field(..., description="Description of the agreement's term")
+    governing_law: str = Field(..., description="The jurisdiction's laws governing the agreement")
+    term_description: str = Field(..., description="Description of the agreement's term")
 
 # Base class for commercial agreements
 class CommercialAgreement(Agreement):
