@@ -1,10 +1,10 @@
-import enum
-import os
-import sys
-import json
-from typing import Dict, Type, Optional, List, Union, Any, get_args, get_origin
 from datetime import datetime, date
-from instructor.multimodal import PDF
+import enum
+import json
+import os
+from pathlib import Path
+import sys
+from typing import Dict, Type, Optional, List, Union, Any, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import models
 from models import ModelEncoder      # add right after existing “import models”
 from models.base import DiligentizerModel, get_available_models
-from utils.llm import cached_llm_invoke, get_claude_model_name
+from utils.llm import cached_llm_invoke
 from utils import logger
 
 def generate_llm_schema(model_cls: type[BaseModel], *,
@@ -131,7 +131,7 @@ def list_available_models(models_dict: Dict[str, Type[DiligentizerModel]], verbo
                 if field_info and field_info.description:
                     print(f"   - {field_name}: {field_info.description}")
 
-def _run_auto(pdf_path: str, model_class: Type[DiligentizerModel],
+def _run_auto(pdf_path: Path, model_class: Type[DiligentizerModel],
               db_path: Optional[str] = None, classify_only: bool = False,
               prompt_extra: Optional[str] = None,
               provider: str = "anthropic",
@@ -175,7 +175,7 @@ def _run_auto(pdf_path: str, model_class: Type[DiligentizerModel],
     return None
 
 def run_analysis(model_class: Type[DiligentizerModel],
-                 pdf_path: str,
+                 pdf_path: Path,
                  db_path: Optional[str] = None,
                  classify_only: bool = False,
                  prompt_extra: Optional[str] = None,
@@ -219,7 +219,7 @@ def _get_prompt(model_class):
 
     return prompt
     
-def _run_manual(pdf_path: str,
+def _run_manual(pdf_path: Path,
                 model_class: DiligentizerModel,
                 db_path: Optional[str] = None,
                 prompt_extra: Optional[str] = None,
@@ -229,13 +229,12 @@ def _run_manual(pdf_path: str,
     "Get the LLM to analyze the document using the specified model"
 
     logger.info(f"Analyzing {pdf_path} with {model_class.__name__}")
-    pdf_input = PDF.from_path(pdf_path)
     prompt = _get_prompt(model_class)
 
     # Create message content with both text and PDF
     message_content = [
         {"type": "text", "text": prompt},
-        pdf_input  # instructor's PDF class handles formatting correctly
+        pdf_path
     ]
     
     # Add extra prompt text if provided
@@ -244,30 +243,17 @@ def _run_manual(pdf_path: str,
     
     logger.info(f"Sending document to LLM for analysis: Prompt: {prompt}")
     
-    try:
-        response = cached_llm_invoke(
-            model_name=provider_model,
-            system_message="You are a document analysis assistant that extracts structured information from documents.",
-            user_content=message_content,
-            response_model=model_class,
-            provider=provider,
-            max_tokens=provider_max_tokens
-        )
-    except Exception as e:
-        logger.error(f"Failed to invoke llm: {e}")
-        return None
+    response = cached_llm_invoke(
+        model_name=provider_model,
+        system_message="You are a document analysis assistant that extracts structured information from documents.",
+        user_content=message_content,
+        response_model=model_class,
+        provider=provider,
+        max_tokens=provider_max_tokens
+    )
     
-    try:
-        response.source_filename = pdf_path
-        response.analyzed_at = datetime.now()
-        # Record which provider / concrete model produced the answer
-        chosen_model = (provider_model
-                        or (get_claude_model_name() if provider.lower() == "anthropic"
-                            else "o4-mini"))
-        response.llm_model = chosen_model
-    except Exception as e:
-        logger.error(f"Object returned by llm invocation does not have necessary fields")
-        return None
+    response.source_filename = pdf_path
+    response.analyzed_at = datetime.now()
 
     # Ensure we're returning a proper model instance, not just a dict-like object
     if isinstance(response, model_class):
@@ -319,7 +305,7 @@ def _create_partial_model(model_class: Type[DiligentizerModel], field_names: lis
     return create_model(f"{model_class.__name__}Part{idx}", **field_definitions)
 
 
-def _run_manual_chunked(pdf_path: str,
+def _run_manual_chunked(pdf_path: Path,
                         model_class: DiligentizerModel,
                         db_path: Optional[str] = None,
                         prompt_extra: Optional[str] = None,
@@ -330,7 +316,6 @@ def _run_manual_chunked(pdf_path: str,
     """Analyze the document in multiple passes using smaller schema chunks."""
 
     logger.info(f"Analyzing {pdf_path} with {model_class.__name__} in chunks of {chunk_size}")
-    pdf_input = PDF.from_path(pdf_path)
     result_data: dict[str, Any] = {}
 
     chunks = _chunk_model_fields(model_class, chunk_size)
@@ -340,23 +325,19 @@ def _run_manual_chunked(pdf_path: str,
 
         message_content = [
             {"type": "text", "text": prompt},
-            pdf_input,
+            pdf_path
         ]
         if prompt_extra:
             message_content.append({"type": "text", "text": prompt_extra})
 
-        try:
-            response = cached_llm_invoke(
-                model_name=provider_model,
-                system_message="You are a document analysis assistant that extracts structured information from documents.",
-                user_content=message_content,
-                response_model=partial_model,
-                provider=provider,
-                max_tokens=provider_max_tokens,
-            )
-        except Exception as e:
-            logger.error(f"Failed to invoke llm for chunk {idx}: {e}")
-            return None
+        response = cached_llm_invoke(
+            model_name=provider_model,
+            system_message="You are a document analysis assistant that extracts structured information from documents.",
+            user_content=message_content,
+            response_model=partial_model,
+            provider=provider,
+            max_tokens=provider_max_tokens,
+        )
 
         result_data.update(response.model_dump())
 
