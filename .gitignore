@@ -2,3 +2,6 @@
 .env
 __pycache__/
 tests/data/
+.cache
+.coverage
+.DS_Store

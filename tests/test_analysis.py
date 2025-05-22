@@ -114,9 +114,9 @@ class TestAnalyzer:
         
         # Create the nested objects with proper structure
         salary_data = {
-            "annual_amount": 120000.00,
-            "currency": "USD",
-            "payment_frequency": "Bi-weekly"
+            "salary_amount": 120000.00,
+            "salary_currency": "USD",
+            "salary_payment_frequency": "Bi-weekly"
         }
         
         termination_clauses = {
@@ -144,7 +144,7 @@ class TestAnalyzer:
             "job_title": "Senior Software Engineer",
             "agreement_date": date(2023, 1, 1),
             "effective_start_date": date(2023, 1, 15),
-            "salary": salary_data,
+            **salary_data,
             "bonuses": [],
             "benefits_description": "Standard company benefits package",
             "vacation_policy_description": "15 days paid vacation annually",
@@ -169,9 +169,9 @@ class TestAnalyzer:
         assert result.employer == "ABC Corporation"
         assert result.employee == "Jane Doe"
         assert result.job_title == "Senior Software Engineer"
-        assert result.salary.annual_amount == 120000.00
-        assert result.salary.currency == "USD"
-        assert result.salary.payment_frequency == "Bi-weekly"
+        assert result.salary_amount == 120000.00
+        assert result.salary_currency == "USD"
+        assert result.salary_payment_frequency == "Bi-weekly"
         assert result.governing_law == "California"
         assert result.termination_clauses.for_cause == "Immediate termination for gross misconduct"
         assert result.restrictive_covenants.confidentiality_clause_present is True
@@ -196,3 +196,28 @@ class TestAnalyzer:
         assert "contracts_EmploymentContract" in models
         assert "auto_AutoModel" in models
         assert models["legal_SoftwareLicenseAgreement"] == SoftwareLicenseAgreement
+
+    @patch('analysis.analyzer.cached_llm_invoke')
+    def test_chunked_run_analysis(self, mock_llm_invoke, mock_pdf_path):
+        """Ensure run_analysis can operate in chunked mode."""
+        partial1 = self.AttributeDict({
+            "start_date": "2023-01-01",
+            "end_date": "2023-12-31"
+        })
+        partial2 = self.AttributeDict({
+            "auto_renews": True,
+            "license_grant": "subscription"
+        })
+
+        mock_llm_invoke.side_effect = [partial1, partial2]
+
+        result = run_analysis(
+            SoftwareLicenseAgreement,
+            mock_pdf_path,
+            chunk_size=2
+        )
+
+        assert isinstance(result, SoftwareLicenseAgreement)
+        assert result.start_date == "2023-01-01"
+        assert result.auto_renews is True
+        assert mock_llm_invoke.call_count == 2

@@ -5,6 +5,24 @@ import json
 import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
+import shutil
+import re
+
+from pydantic import BaseModel, Field, constr     # NEW
+
+from analysis.analyzer import AnalysisError   # NEW
+
+class FilenameResponse(BaseModel):               # NEW
+    """
+    Schema the LLM must return when asked for a dataroom filename.
+    The value is a filesystem-safe stem (no extension).
+    """
+    filename: constr(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=60,
+        pattern=r"^[0-9a-zA-Z_]+$"
+    ) = Field(..., description="Lower-case, underscore-separated file name without extension")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -56,7 +74,10 @@ def save_to_db(db_path, response):
     except Exception as e:
         logger.error(f"Error saving to database: {e}", exc_info=True)
 
-def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_prefix, model_class, prompt_extra=None):
+def process_csv_file(csv_input_path, csv_input_column, csv_output_path,
+                     column_prefix, model_class, prompt_extra=None,
+                     provider="anthropic",
+                     provider_model: str | None = None):
     """Process a CSV file, analyzing text in the specified column and outputting results.
     
     Args:
@@ -66,6 +87,7 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
         column_prefix: Prefix for output columns
         model_class: The model class to use for analysis
         prompt_extra: Additional text to append to every LLM prompt
+        provider: LLM provider to use
         
     Returns:
         bool: True if processing was successful, False otherwise
@@ -140,10 +162,12 @@ def process_csv_file(csv_input_path, csv_input_column, csv_output_path, column_p
                     message_content.append({"type": "text", "text": prompt_extra})
                 
                 response = cached_llm_invoke(
+                    model_name=provider_model,      # << NEW
                     system_message=system_message,
                     user_content=message_content,
                     max_tokens=2000,
-                    response_model=model_class
+                    response_model=model_class,
+                    provider=provider
                 )
                 
                 # Add analysis results to the dataframe
@@ -213,8 +237,71 @@ def main():
         parser.add_argument("--verbose", action="store_true", help="Be verbose about everything")
         parser.add_argument("--prompt-extra", type=str, 
                            help="Additional text to append to every LLM prompt")
+        parser.add_argument(
+            "--provider",
+            choices=["anthropic", "openai"],
+            default="anthropic",
+            help="LLM provider family to use (default: anthropic)"
+        )
+        parser.add_argument(
+            "--provider-model",
+            type=str,
+            help="Exact LLM model name to use (overrides the default selected for the provider)"
+        )
+        parser.add_argument(
+            "--provider-small-model",
+            type=str,
+            help="Exact *small* LLM model to use for lightweight tasks "
+                 "(defaults to --provider-model)"
+        )
+        parser.add_argument(
+            "--provider-reasoning-effort",
+            choices=["low", "medium", "high"],
+            help="OpenAI 'o'-family models accept a reasoning_effort flag "
+                 "(low | medium | high)"
+        )
+        parser.add_argument(
+            "--provider-max-tokens",
+            type=int,
+            default=2048,
+            metavar="N",
+            help="Specify the maximum tokens for the LLM model; defaults to 2048"
+        )
+        parser.add_argument(
+            "--chunk-size",
+            type=int,
+            metavar="N",
+            default=0,
+            help="Analyse the PDF in multiple passes: split the model schema into "
+                 "chunks of N fields (0 = disable, default)"
+        )
+        parser.add_argument("--dataroom-output-dir", type=str,
+                            help="Root directory where the processed PDF and its JSON "
+                                 "representation will be copied into a model-hierarchy "
+                                 "sub-folder (Contracts/… etc.)")
         
         args = parser.parse_args()
+        chunk_size = args.chunk_size 
+        provider = args.provider.lower()
+
+        provider_model = args.provider_model
+        # If the user did not supply a model, choose sensible default per-provider
+        if provider == "openai" and not provider_model:
+            provider_model = "gpt-4.1"
+
+        provider_reasoning_effort = args.provider_reasoning_effort
+        if provider_reasoning_effort:
+            os.environ["LLM_REASONING_EFFORT"] = provider_reasoning_effort
+
+        # Make provider_model visible to every worker
+        if provider_model:
+            os.environ["LLM_MODEL_NAME"] = provider_model
+
+        # already chose provider_model ↑
+        provider_small_model = args.provider_small_model or provider_model
+        # make it visible to helpers / workers
+        if provider_small_model:
+            os.environ["LLM_SMALL_MODEL_NAME"] = provider_small_model
 
         # If verbose is configured, override the log level
         if args.verbose:
@@ -223,6 +310,12 @@ def main():
         # Configure logger with command line arguments
         configure_logger(args.log_level, args.log_file)
         logger.debug("Diligentizer starting up")
+
+        dataroom_output_dir = Path(args.dataroom_output_dir).expanduser().resolve() \
+                              if args.dataroom_output_dir else None
+        if dataroom_output_dir:
+            dataroom_output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Dataroom output will be stored under: {dataroom_output_dir}")
         
         # Get all available models
         models_dict = get_available_models()
@@ -263,7 +356,7 @@ def main():
         # step and simply return the result from the auto model, which is effectively a classification.
         classify_only = False
 
-        # The --auto-only switch disables running the model that the auto model selected.
+        # The --classify-only switch disables running the model that the auto model selected.
         if args.classify_only:
             classify_only = True
         
@@ -334,7 +427,9 @@ def main():
                 args.csv_output,
                 args.csv_output_column_prefix,
                 model_class,
-                args.prompt_extra
+                args.prompt_extra,
+                provider,
+                provider_model,          # << NEW
             )
             
             if not success:
@@ -352,7 +447,10 @@ def main():
                 args.parallel,
                 classify_only,
                 prompt_extra=args.prompt_extra,
-                crawl_limit=args.crawl_limit
+                crawl_limit=args.crawl_limit,
+                provider=provider,
+                provider_model=provider_model,
+                chunk_size=chunk_size 
             )
         else:
             # Process a single file
@@ -360,17 +458,29 @@ def main():
                 print("Error: --pdf is required when not using --crawl-dir or --csv-input")
                 logger.error("No PDF file specified")
                 return 1
-            
+
             # Create a generator that yields a single result for the single PDF
             def single_pdf_generator():
+                pdf_path = Path(args.pdf)
+
                 try:
-                    pdf_path = Path(args.pdf)
-                    result = run_analysis(model_class, args.pdf, None, classify_only, prompt_extra=args.prompt_extra)
+                    result = run_analysis(
+                        model_class, pdf_path, None,
+                        classify_only,
+                        prompt_extra=args.prompt_extra,
+                        provider=provider,
+                        provider_model=provider_model,
+                        provider_max_tokens=args.provider_max_tokens,
+                        chunk_size=chunk_size
+                    )
                     yield (True, str(pdf_path), result, None)
-                except Exception as e:
-                    logger.error(f"Failed to process {args.pdf}: {e}")
+                except AnalysisError as e:
+                    # Make the failure obvious to the user
+                    logger.error(f"Analysis failed for {pdf_path}: {e}")
+                    print(f"Analysis failed for {pdf_path}: {e}")
+                    # Signal failure to the main loop; no result will be processed / stored
                     yield (False, str(pdf_path), None, e)
-            
+
             results_generator = single_pdf_generator()
         
         # Process all results from the generator
@@ -382,7 +492,59 @@ def main():
         csv_writer = None
         max_path_length = 0  # Track the maximum path length for dynamic column creation
         classification_results = []  # Store results temporarily to determine max path length
-        
+
+        def _pluralize(name: str) -> str:
+            if not name.endswith("s"):
+                return name + "s"
+            return name
+
+        def _model_hierarchy_path(model_cls) -> Path:
+            components = []
+            for cls in reversed(model_cls.__mro__):
+                if cls.__name__ in {"object", "BaseModel", "DiligentizerModel"}:
+                    continue
+                components.append(_pluralize(cls.__name__))
+            return Path(*components)
+
+        def _generate_llm_filename_base(model_instance):
+            """
+            Ask the LLM for a concise, filesystem-safe filename stem (no extension)
+            that describes the document represented by *model_instance*.
+            """
+            from utils.llm import cached_llm_invoke
+
+            system_message = (
+                "You create short, descriptive, filesystem-safe file names for a dataroom. "
+                "Return ONLY the file name (no extension), ≤60 chars, lower-case, words "
+                "separated by underscores; use letters, numbers or underscores only."
+            )
+            user_content = [
+                {"type": "text",
+                 "text": "Generate a filename for the following document:"},
+                {"type": "text",
+                 "text": model_instance.model_dump_json(indent=2)}
+            ]
+
+            raw = cached_llm_invoke(
+                model_name=provider_small_model,   # was provider_model
+                system_message=system_message,
+                user_content=user_content,
+                max_tokens=1000,
+                temperature=0,
+                provider=provider,
+                response_model=FilenameResponse
+            )
+
+            # Expect the LLM to return a FilenameResponse instance; fall back gracefully
+            if isinstance(raw, FilenameResponse):      # NEW
+                name = raw.filename
+            else:                                      # NEW (fallback – previous logic unchanged)
+                if not isinstance(raw, str):
+                    raw = str(raw)
+                name = raw.strip().strip('"').strip("'")
+            name = re.sub(r"[^0-9a-zA-Z_-]+", "_", name).lower().strip("_")
+            return name[:60] or "document"
+
         if args.classify_only and args.classify_to_csv:
             logger.info(f"Classification results will be saved to: {args.classify_to_csv}")
             print(f"Classification results will be saved to: {args.classify_to_csv}")
@@ -406,7 +568,37 @@ def main():
                     except Exception as e:
                         logger.error(f"Failed to save JSON output: {e}")
                         print(f"Error saving JSON output: {e}")
-                
+
+                # --- dataroom output -----------------------------------------------------
+                if dataroom_output_dir and result:
+                    try:
+                        hierarchy_subdir = dataroom_output_dir / _model_hierarchy_path(result.__class__)
+                        hierarchy_subdir.mkdir(parents=True, exist_ok=True)
+
+                        base = _generate_llm_filename_base(result)
+                        pdf_target  = hierarchy_subdir / f"{base}.pdf"
+                        json_target = hierarchy_subdir / f"{base}.json"
+                        logger.info(f"Dataroom target files: {pdf_target} and {json_target}")
+
+                        # ensure uniqueness
+                        suffix = 1
+                        while pdf_target.exists() or json_target.exists():
+                            pdf_target  = hierarchy_subdir / f"{base}_{suffix}.pdf"
+                            json_target = hierarchy_subdir / f"{base}_{suffix}.json"
+                            suffix += 1
+
+                        logger.info(f"copying file to {pdf_target}")
+                        shutil.copy2(file_path, pdf_target)
+
+                        from models import ModelEncoder
+                        with open(json_target, "w") as jf:
+                            json.dump(result.model_dump(), jf, cls=ModelEncoder, indent=2)
+
+                        logger.info(f"Dataroom package created at: {hierarchy_subdir}")
+                    except Exception as e:
+                        logger.error(f"Failed to create dataroom output for {file_path}: {e}", exc_info=True)
+                # -------------------------------------------------------------------------
+
                 # Save to db if requested (only if not already done by process_directory)
                 if args.sqlite and result:
                     logger.info(f"Saving to db: {result}")

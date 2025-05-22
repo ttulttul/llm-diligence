@@ -9,8 +9,12 @@ from anthropic import Anthropic
 from instructor.multimodal import PDF
 import sys
 
-from utils.llm import cached_llm_invoke
+from utils.llm import cached_llm_invoke, ValidationError as LLMValidationError
 from utils import logger
+
+class ModelSelectionError(Exception):
+    """Raised when the LLM fails to return a valid model selection."""
+    pass
 
 class AutoDocumentClassification(DiligentizerModel):
     """Model used to receive the selected model name from the LLM.
@@ -42,15 +46,23 @@ class AutoModel(DiligentizerModel):
             if name == "auto_AutoModel":  # Skip the auto model itself
                 continue
             doc_string = model_class.__doc__ or "No description available"
-            field_descriptions = []
-            for field_name, field_info in model_class.model_fields.items():
-                if field_info.description:
-                    field_descriptions.append(f"- {field_name}: {field_info.description}")
+            # Find direct subclasses of this model_class in models_dict
+            derived_models = [
+                child_key
+                for child_key, child_cls in models_dict.items()
+                if model_class in child_cls.__bases__
+            ]
+            if derived_models:
+                # join with comma and space; replace last comma with " and " for nicer grammar
+                if len(derived_models) > 1:
+                    derived_str = ", ".join(derived_models[:-1]) + " and " + derived_models[-1]
+                else:
+                    derived_str = derived_models[0]
+                doc_string = doc_string.rstrip() + f" More specific models like {derived_str} derive from this model type."
             
             model_descriptions[name] = {
                 "description": doc_string,
                 "class_name": model_class.__name__,
-                "fields": field_descriptions
             }
         return model_descriptions
     
@@ -86,7 +98,10 @@ class AutoModel(DiligentizerModel):
     
     @staticmethod
     def _select_model_with_llm(pdf_input: Any, models_dict: Dict[str, Type[DiligentizerModel]], 
-                              phase_description: str, prompt_extra: Optional[str] = None) -> AutoDocumentClassification:
+                              phase_description: str, prompt_extra: Optional[str] = None,
+                              provider: str = "anthropic",
+                              provider_model: str | None = None,
+                              provider_max_tokens: int | None = None) -> AutoDocumentClassification:
         """Use LLM to select the most appropriate model from the provided models."""
         model_descriptions = AutoModel._get_model_descriptions(models_dict)
         
@@ -116,12 +131,18 @@ Respond with only the exact model name (one of the keys from the available model
         logger.debug(f"Calling LLM from AutoModel for phase: {phase_description}")
         
         # Make the API call with cached instructor
-        response = cached_llm_invoke(
-            system_message="You are a document analysis assistant.",
-            user_content=message_content,
-            max_tokens=500,
-            response_model=AutoDocumentClassification
-        )
+        try:
+            response = cached_llm_invoke(
+                system_message="You are a document analysis assistant.",
+                user_content=message_content,
+                response_model=AutoDocumentClassification,
+                provider=provider,
+                model_name=provider_model,
+                max_tokens=provider_max_tokens
+            )
+        except LLMValidationError as e:
+            logger.error("Validation error during model selection: %s", e, exc_info=True)
+            raise ModelSelectionError("LLM failed to select a valid document model") from e
         
         return response
     
@@ -148,7 +169,10 @@ Respond with only the exact model name (one of the keys from the available model
     def from_pdf(cls, pdf_path: str,
                  available_models: Dict[str, Type[DiligentizerModel]],
                  classify_only: bool = False,
-                 prompt_extra: Optional[str] = None) -> Union["AutoModel", AutoDocumentClassification]:
+                 prompt_extra: Optional[str] = None,
+                 provider: str = "anthropic",
+                 provider_model: Optional[str] = None,
+                 provider_max_tokens: Optional[int] = None) -> Union["AutoModel", AutoDocumentClassification]:
         """Use LLM to select and apply the most appropriate model for the document through a hierarchical process."""
         # Load the PDF for analysis
         pdf_input = PDF.from_path(pdf_path)
@@ -177,7 +201,9 @@ Respond with only the exact model name (one of the keys from the available model
                 phase_description = f"PHASE {phase_num}: Now, select the specific type of {current_model_class.__name__} that best matches this document."
             
             # Select model with LLM
-            phase_response = cls._select_model_with_llm(pdf_input, current_models, phase_description, prompt_extra)
+            phase_response = cls._select_model_with_llm(pdf_input, current_models, phase_description, prompt_extra,
+                                                        provider=provider, provider_model=provider_model,
+                                                        provider_max_tokens=provider_max_tokens)
             
             # Get model name and find corresponding key
             model_name = phase_response.model_name
