@@ -281,7 +281,7 @@ def main():
                                  "sub-folder (Contracts/… etc.)")
         
         args = parser.parse_args()
-        chunk_size = args.chunk_size          # NEW
+        chunk_size = args.chunk_size 
         provider = args.provider.lower()
 
         provider_model = args.provider_model
@@ -450,7 +450,7 @@ def main():
                 crawl_limit=args.crawl_limit,
                 provider=provider,
                 provider_model=provider_model,
-                chunk_size=chunk_size            # NEW
+                chunk_size=chunk_size 
             )
         else:
             # Process a single file
@@ -476,7 +476,7 @@ def main():
                     yield (True, str(pdf_path), result, None)
                 except AnalysisError as e:
                     # Make the failure obvious to the user
-                    logger.error(f"Analysis failed for {pdf_path}: {e}", exc_info=True)
+                    logger.error(f"Analysis failed for {pdf_path}: {e}")
                     print(f"Analysis failed for {pdf_path}: {e}")
                     # Signal failure to the main loop; no result will be processed / stored
                     yield (False, str(pdf_path), None, e)

@@ -223,6 +223,8 @@ def cached_llm_invoke(
             {"role": "user",   "content": content_parts},
         ]
 
+        logger.info(f"Sending request to OpenAI... {messages}")
+
         response = raw_client.responses.parse(
             model=model_name,
             input=messages,
