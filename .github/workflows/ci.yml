@@ -87,7 +87,7 @@ jobs:
         safety check || true
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: security-reports
@@ -149,7 +149,7 @@ jobs:
         python -m build
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dist-packages
         path: dist/
@@ -191,7 +191,7 @@ jobs:
         "
 
     - name: Upload documentation
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: MODELS.md
