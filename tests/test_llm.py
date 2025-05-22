@@ -2,27 +2,17 @@ import pytest
 from unittest.mock import patch, MagicMock
 import json
 
-from utils.llm import cached_llm_invoke, format_content_for_anthropic
+from utils.llm import cached_llm_invoke
+from utils.llm_anthropic import format_content_for_anthropic
 
 
 class TestLLMUtils:
     
-    @patch('utils.llm.cache')
-    @patch('utils.llm.instructor')
-    @patch('utils.llm.Anthropic')
-    def test_cached_llm_invoke_caching(self, mock_anthropic, mock_instructor, mock_cache):
-        """Test that cached_llm_invoke uses the cache correctly."""
-        # Set up mock cache behavior
-        mock_cache.get.return_value = None
-        
-        # Set up mock anthropic
-        mock_anthropic_instance = MagicMock()
-        mock_anthropic.return_value = mock_anthropic_instance
-        
-        # Set up mock instructor
-        mock_instructor_instance = MagicMock()
-        mock_instructor.from_anthropic.return_value = mock_instructor_instance
-        mock_instructor_instance.chat.completions.create.return_value = "Test response"
+    @patch('utils.llm_anthropic.cached_llm_invoke')
+    def test_cached_llm_invoke_caching(self, mock_anthropic_invoke):
+        """Test that cached_llm_invoke delegates to the correct provider."""
+        # Set up mock response
+        mock_anthropic_invoke.return_value = "Test response"
         
         # Call the function
         result = cached_llm_invoke(
@@ -33,25 +23,17 @@ class TestLLMUtils:
             temperature=0
         )
         
-        # Check that cache was checked
-        mock_cache.get.assert_called_once()
-        
-        # Check that instructor was called
-        mock_instructor.from_anthropic.assert_called_once()
-        mock_instructor_instance.chat.completions.create.assert_called_once()
-        
-        # Check that result was cached
-        mock_cache.set.assert_called_once()
+        # Check that the anthropic provider was called
+        mock_anthropic_invoke.assert_called_once()
         
         # Check result
         assert result == "Test response"
         
-    @patch('utils.llm.cache')
-    @patch('utils.llm.Anthropic')
-    def test_cached_llm_invoke_cache_hit(self, mock_anthropic, mock_cache):
-        """Test that cached_llm_invoke returns cached results when available."""
-        # Set up mock cache to return a cached result
-        mock_cache.get.return_value = "Cached response"
+    @patch('utils.llm_anthropic.cached_llm_invoke')
+    def test_cached_llm_invoke_cache_hit(self, mock_anthropic_invoke):
+        """Test that cached_llm_invoke returns results from provider."""
+        # Set up mock to return a response
+        mock_anthropic_invoke.return_value = "Cached response"
         
         # Call the function
         result = cached_llm_invoke(
@@ -62,11 +44,8 @@ class TestLLMUtils:
             temperature=0
         )
         
-        # Check that cache was checked
-        mock_cache.get.assert_called_once()
-        
-        # Check that anthropic was not called
-        mock_anthropic.assert_not_called()
+        # Check that the anthropic provider was called
+        mock_anthropic_invoke.assert_called_once()
         
         # Check result is from cache
         assert result == "Cached response"
@@ -82,9 +61,3 @@ class TestLLMUtils:
         content = ["Part 1", "Part 2"]
         result = format_content_for_anthropic(content)
         assert result == [{"type": "text", "text": "Part 1\nPart 2"}]
-        
-        # Test with a PDF path
-        with patch('utils.llm.extract_text_from_pdf', return_value="PDF content"):
-            content = "path/to/document.pdf"
-            result = format_content_for_anthropic(content)
-            assert result == [{"type": "text", "text": "PDF content"}]

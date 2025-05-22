@@ -54,8 +54,16 @@ class TestModelClasses:
         """Test the ModelEncoder for JSON serialization."""
         # Create a model with date/datetime fields
         test_model = SoftwareLicenseAgreement(
+            # Required Agreement fields
+            agreement_title="Software License Agreement",
+            agreement_date=date(2023, 1, 1),
+            effective_date=date(2023, 1, 1),
+            governing_law="California",
+            term_description="3 year license term",
+            # Required LicenseAgreement fields
             licensor="Test Corp",
             licensee="Test Client",
+            # SoftwareLicenseAgreement specific fields
             start_date="2023-01-01",
             end_date="2025-12-31",
             auto_renews=False,

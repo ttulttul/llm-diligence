@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional, List, Dict, Any, Union
-from pydantic import Field, BaseModel, field_validator
+from pydantic import Field, BaseModel, field_validator, ConfigDict
 from datetime import date, datetime
 import re
 from .base import DiligentizerModel
@@ -779,10 +779,10 @@ class StockOptionAgreement(HRAgreement):
     employee_signature: bool = Field(..., description="Whether signed by the employee")
     signature_date: date = Field(..., description="Date of signature")
     
-    class Config:
-        """Pydantic model configuration"""
-        title = "Stock Option Agreement"
-        description = "Agreement granting employee rights to purchase company stock"
+    model_config = ConfigDict(
+        title="Stock Option Agreement",
+        description="Agreement granting employee rights to purchase company stock"
+    )
 
 class ComplianceDocument(HRDocument):
     """A document related to workplace compliance with laws, regulations, or internal policies.

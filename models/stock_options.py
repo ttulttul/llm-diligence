@@ -1,4 +1,4 @@
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import date
 
@@ -82,6 +82,6 @@ class StockOptionAgreement(Agreement):
 
     schedules_referenced: Optional[List[str]] = Field(default_factory=list, description="List of schedules attached to or referenced by the agreement by name or letter (e.g., 'Schedule A - Terms of Option').")
 
-    class Config:
-        extra = 'allow' # Allows for any additional fields encountered in specific agreements that are not explicitly part of this model structure.
-        # Example: if a document has unique terms in a schedule, they can be captured without breaking the model.
+    model_config = ConfigDict(
+        extra='allow'  # Allows for any additional fields encountered in specific agreements
+    )

@@ -20,6 +20,13 @@ def mock_pdf_path():
 def mock_license_data():
     """Fixture for mock software license data."""
     return {
+        # Required Agreement fields
+        "agreement_title": "Software License Agreement",
+        "agreement_date": "2023-01-01",
+        "effective_date": "2023-01-01",
+        "governing_law": "California",
+        "term_description": "3 year term from 2023-01-01 to 2025-12-31",
+        # License-specific fields
         "licensor": "TechCorp Inc.",
         "licensee": "Client XYZ",
         "start_date": "2023-01-01",
@@ -43,39 +50,34 @@ def mock_license_data():
 def mock_employment_data():
     """Fixture for mock employment contract data."""
     return {
+        # Required Agreement fields
+        "agreement_title": "Employment Agreement",
+        "agreement_date": "2023-02-15",
+        "effective_date": "2023-03-01",
+        "governing_law": "California",
+        "term_description": "Indefinite employment term",
+        # Required EmploymentAgreement fields
         "employer": "ABC Corporation",
         "employee": "Jane Doe",
+        "compensation_description": "Annual salary of $120,000 USD paid bi-weekly",
+        # Required EmploymentContract fields
+        "termination_for_cause": "Immediate termination for misconduct",
+        "termination_without_cause_employer": "30 days notice required",
+        # Optional EmploymentContract fields
         "job_title": "Senior Software Engineer",
-        "agreement_date": "2023-02-15",
         "effective_start_date": "2023-03-01",
         "salary_amount": 120000.00,
         "salary_currency": "USD",
         "salary_payment_frequency": "bi-weekly",
-        "bonuses": [
-            {
-                "description": "Performance bonus",
-                "max_amount": 20000.00,
-                "currency": "USD",
-                "timing": "annually",
-                "conditions": "Based on company and individual performance"
-            }
-        ],
+        "bonuses": ["Performance bonus up to $20,000 annually"],
         "benefits_description": "Standard company benefits package",
         "vacation_policy_description": "15 days paid vacation annually",
-        "termination_clauses": {
-            "for_cause": "Immediate termination for misconduct",
-            "without_cause_employer": "30 days notice required",
-            "resignation_employee": "30 days notice required"
-        },
-        "restrictive_covenants": {
-            "non_competition_duration_months": 6,
-            "non_competition_scope": "Software industry within 50 miles",
-            "non_solicitation_duration_months": 12,
-            "non_solicitation_scope": "Company clients and employees",
-            "confidentiality_clause_present": True,
-            "intellectual_property_assignment": True
-        },
-        "governing_law": "California"
+        "non_competition_duration_months": 6,
+        "non_competition_scope": "Software industry within 50 miles",
+        "non_solicitation_duration_months": 12,
+        "non_solicitation_scope": "Company clients and employees",
+        "confidentiality_clause_present": True,
+        "intellectual_property_assignment": True
     }
 
 @pytest.fixture

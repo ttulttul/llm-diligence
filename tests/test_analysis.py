@@ -136,21 +136,37 @@ class TestAnalyzer:
         
         # Update the mock data with properly structured fields
         mock_data.update({
+            # Required Agreement base class fields
+            "agreement_title": "Employment Agreement",
+            "agreement_date": date(2023, 1, 1),
+            "effective_date": date(2023, 1, 15),
+            "governing_law": "California",
+            "term_description": "Indefinite employment term",
+            "parties": ["ABC Corporation", "Jane Doe"],
+            # Required EmploymentAgreement fields  
+            "employer": "ABC Corporation",
+            "employee": "Jane Doe",
+            "compensation_description": "Annual salary of $120,000 USD paid bi-weekly",
+            # Required EmploymentContract fields
+            "termination_for_cause": "Immediate termination for gross misconduct",
+            "termination_without_cause_employer": "Two weeks notice required",
+            # Additional DiligentizerModel fields
             "source_filename": mock_pdf_path,
             "analyzed_at": datetime.now(),
             "llm_model": "claude-3-opus-20240229",
-            "employer": "ABC Corporation",
-            "employee": "Jane Doe",
+            # Optional EmploymentContract fields
             "job_title": "Senior Software Engineer",
-            "agreement_date": date(2023, 1, 1),
             "effective_start_date": date(2023, 1, 15),
             **salary_data,
             "bonuses": [],
             "benefits_description": "Standard company benefits package",
             "vacation_policy_description": "15 days paid vacation annually",
-            "termination_clauses": termination_clauses,
-            "restrictive_covenants": restrictive_covenants,
-            "governing_law": "California",
+            "non_solicitation_duration_months": 12,
+            "non_solicitation_scope": "Employees and clients",
+            "non_competition_duration_months": 6,
+            "non_competition_scope": "Software industry within 50 miles",
+            "confidentiality_clause_present": True,
+            "intellectual_property_assignment": True,
             "on_call_requirements": None,
             "appendices_referenced": ["Employee Handbook", "Confidentiality Agreement"]
         })
@@ -173,8 +189,9 @@ class TestAnalyzer:
         assert result.salary_currency == "USD"
         assert result.salary_payment_frequency == "Bi-weekly"
         assert result.governing_law == "California"
-        assert result.termination_clauses.for_cause == "Immediate termination for gross misconduct"
-        assert result.restrictive_covenants.confidentiality_clause_present is True
+        assert result.termination_for_cause == "Immediate termination for gross misconduct"
+        assert result.termination_without_cause_employer == "Two weeks notice required"
+        assert result.confidentiality_clause_present is True
         assert len(result.appendices_referenced) == 2
         
     @patch('analysis.analyzer.get_available_models')
@@ -200,16 +217,25 @@ class TestAnalyzer:
     @patch('analysis.analyzer.cached_llm_invoke')
     def test_chunked_run_analysis(self, mock_llm_invoke, mock_pdf_path):
         """Ensure run_analysis can operate in chunked mode."""
-        partial1 = self.AttributeDict({
-            "start_date": "2023-01-01",
-            "end_date": "2023-12-31"
-        })
-        partial2 = self.AttributeDict({
-            "auto_renews": True,
-            "license_grant": "subscription"
-        })
-
-        mock_llm_invoke.side_effect = [partial1, partial2]
+        # Create enough mock responses for all chunks (SoftwareLicenseAgreement has 78 non-base fields, so 39 chunks with size 2)
+        # Each response should return a partial result with some fields
+        mock_responses = []
+        
+        # Generate mock responses with different field combinations
+        field_sets = [
+            {"start_date": "2023-01-01", "end_date": "2023-12-31"},
+            {"auto_renews": True, "license_grant": "subscription"},
+            {"licensor": "TechCorp", "licensee": "Client"},
+            {"minimum_price": 1000.0, "price_period": "monthly"},
+            {"warranty_type": "limited", "liability_limit": "fixed"}
+        ]
+        
+        # Repeat the field sets to cover all 39 chunks needed
+        for i in range(39):
+            field_set = field_sets[i % len(field_sets)]
+            mock_responses.append(self.AttributeDict(field_set))
+        
+        mock_llm_invoke.side_effect = mock_responses
 
         result = run_analysis(
             SoftwareLicenseAgreement,
@@ -218,6 +244,8 @@ class TestAnalyzer:
         )
 
         assert isinstance(result, SoftwareLicenseAgreement)
+        # Only check fields that we know were set in our mock responses
         assert result.start_date == "2023-01-01"
         assert result.auto_renews is True
-        assert mock_llm_invoke.call_count == 2
+        assert result.licensor == "TechCorp"
+        assert mock_llm_invoke.call_count == 39  # 78 fields / 2 per chunk = 39 chunks

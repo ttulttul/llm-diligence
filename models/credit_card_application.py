@@ -92,7 +92,7 @@ class OwnerRealEstateDetail(BaseModel):
     purchase_price: Optional[float] = Field(None, description="Purchase price of the property")
     registered_owners: Optional[List[str]] = Field(default_factory=list, description="Names of registered owners")
 
-class ApplicantOwnerInfo(AgreementParty):
+class ApplicantOwnerInfo(BaseModel):
     """Detailed information about an owner/partner applying for the loan."""
     party_type: Optional[str] = Field("Owner/Partner", description="Type of party (always Owner/Partner for this context)") # Override from base
     party_name: Optional[str] = Field(None, description="Full name of the owner/partner") # Explicitly add description

@@ -2,7 +2,7 @@ from typing import Dict, Type, Any, List, Union, Optional, Set
 import os
 import inspect
 from .base import DiligentizerModel
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, ConfigDict
 import json
 import instructor
 from anthropic import Anthropic
@@ -23,8 +23,7 @@ class AutoDocumentClassification(DiligentizerModel):
     the automatic routing of documents to specialized analysis models based on their content and structure."""
     model_name: str = Field(..., description="The name of the most appropriate model for this document")
 
-    class Config:
-        extra = 'allow'
+    model_config = ConfigDict(extra='allow')
 
 class AutoModel(DiligentizerModel):
     """Automatically selects the most appropriate model to analyze the document.
@@ -84,14 +83,14 @@ class AutoModel(DiligentizerModel):
     
     @staticmethod
     def _get_base_models(available_models: Dict[str, Type[DiligentizerModel]]) -> Dict[str, Type[DiligentizerModel]]:
-        """Get models that directly inherit from DiligentizerModel."""
+        """Get models that are subclasses of DiligentizerModel (but exclude AutoModel itself)."""
         base_models = {}
         for name, model_class in available_models.items():
             if name.startswith("auto"):  # Skip all models in the auto module
                 continue
             
-            # Check if this model directly inherits from DiligentizerModel
-            if DiligentizerModel in model_class.__bases__:
+            # Check if this model is a subclass of DiligentizerModel
+            if issubclass(model_class, DiligentizerModel) and model_class != DiligentizerModel:
                 base_models[name] = model_class
         
         return base_models
