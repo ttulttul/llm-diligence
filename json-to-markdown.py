@@ -56,7 +56,9 @@ def _html(val: Any) -> str:
 def render_markdown(model_instance) -> str:
     body = _md(model_instance.model_dump())
     title = getattr(model_instance, "agreement_title", model_instance.__class__.__name__)
-    return f"# {title}\n\n{body}"
+    source = getattr(model_instance, "source_filename", None)
+    link_line = f"[Source PDF]({source})\n\n" if source else ""
+    return f"# {title}\n\n{link_line}{body}"
 
 
 def render_html(model_instance) -> str:
@@ -64,7 +66,15 @@ def render_html(model_instance) -> str:
     title = html.escape(
         getattr(model_instance, "agreement_title", model_instance.__class__.__name__)
     )
-    return f"<!doctype html><html><head><meta charset='utf-8'><title>{title}</title></head><body><h1>{title}</h1>{body}</body></html>"
+    source = getattr(model_instance, "source_filename", None)
+    source_html = (
+        f"<p><a href=\"{html.escape(str(source))}\">Source PDF</a></p>" if source else ""
+    )
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        f"<title>{title}</title></head><body><h1>{title}</h1>"
+        f"{source_html}{body}</body></html>"
+    )
 
 
 # --------------------------------------------------------------------------- #
