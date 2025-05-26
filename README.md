@@ -4,10 +4,14 @@ Diligentizer is a powerful utility designed to help you collect and organize due
 
 ## Features
 
-- **Document Analysis**: Feed PDFs of contracts, financial reports, legal agreements, and other due diligence materials
-- **Intelligent Extraction**: Uses AI to extract relevant information based on document type
-- **Structured Data**: Converts unstructured document content into well-organized Pydantic models
-- **Auto-Detection**: Can automatically identify document types and apply the appropriate extraction model
+- **Document Analysis**: Feed PDFs of contracts, financial reports, legal agreements, and other due diligence materials  
+- **Intelligent Extraction**: Uses AI to extract relevant information based on document type  
+- **Structured Data**: Converts unstructured document content into well-organized Pydantic models  
+- **Auto-Detection & Pre-Classification**: Automatically identify document types and optionally store the classification results in a CSV file  
+- **CSV Batch Processing**: Point the tool at a CSV file and it will create new, typed columns with the extracted data  
+- **Dataroom Packaging**: Automatically builds a hierarchical folder structure (e.g. `Contracts/EmploymentContracts`) and generates human-readable, filesystem-safe filenames for both the source PDF and its JSON representation  
+- **Chunked Analysis**: Transparently splits very large model schemas into smaller chunks so they fit within LLM context limits  
+- **Multi-Provider Support**: Seamlessly switch between Anthropic and OpenAI models, override model names, and tune OpenAI reasoning effort  
 - **Extensive Model Library**: Supports numerous document types across various domains:
   - Legal documents (software agreements, employment contracts)
   - Financial statements
@@ -148,11 +152,10 @@ The system will:
 
 Future development will focus on:
 
-- Exporting extracted data to CSV files
-- Batch processing of multiple documents
-- Custom model creation based on your specific document types
-- Web interface for document upload and analysis
-- API for integrating with other systems
+- Custom model generation wizards to make it even easier to define new document schemas
+- Rich web interface for document upload, review, and collaboration
+- REST / GraphQL API for integrating with other systems
+- Advanced analytics dashboards powered by the normalized database schema
 
 ## Contributing
 
