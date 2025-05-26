@@ -562,7 +562,11 @@ def main():
                         with open(output_path, 'w') as f:
                             # Use the ModelEncoder to handle datetime objects
                             from models import ModelEncoder
-                            json.dump(result.model_dump(), f, cls=ModelEncoder, indent=2)
+                            data = {
+                                "DiligentizerModel": f"{result.__class__.__module__}.{result.__class__.__name__}",
+                                **result.model_dump(),
+                            }
+                            json.dump(data, f, cls=ModelEncoder, indent=2)
                         print(f"JSON output saved to: {output_path}")
                         logger.info(f"JSON output saved to: {output_path}")
                     except Exception as e:
@@ -592,7 +596,11 @@ def main():
 
                         from models import ModelEncoder
                         with open(json_target, "w") as jf:
-                            json.dump(result.model_dump(), jf, cls=ModelEncoder, indent=2)
+                            data = {
+                                "DiligentizerModel": f"{result.__class__.__module__}.{result.__class__.__name__}",
+                                **result.model_dump(),
+                            }
+                            json.dump(data, jf, cls=ModelEncoder, indent=2)
 
                         logger.info(f"Dataroom package created at: {hierarchy_subdir}")
                     except Exception as e:
