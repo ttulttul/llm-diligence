@@ -81,8 +81,11 @@ def main() -> None:
     ap.add_argument(
         "--html", action="store_true", help="Output HTML instead of Markdown"
     )
+    ap.add_argument("--index-columns", help="Comma-separated list of model field names to include as columns in the index table")
     ap.add_argument("json", nargs="?", help="Path to the JSON file to load")
     args = ap.parse_args()
+
+    index_cols = [c.strip() for c in args.index_columns.split(",")] if getattr(args, "index_columns", None) else []
 
     if args.list:
         print("\n".join(sorted(models_dict)))
@@ -106,7 +109,7 @@ def main() -> None:
     if json_path.is_dir():
         dir_path = json_path
         json_files = sorted(dir_path.glob("*.json"))
-        rendered_docs: list[tuple[str, str]] = []
+        rendered_docs: list[tuple[str, str, list[Any]]] = []
         error_count = 0
         for jf in json_files:
             try:
@@ -117,30 +120,43 @@ def main() -> None:
                 content = render_html(instance) if args.html else render_markdown(instance)
                 out_file.write_text(content, encoding="utf-8")
                 title = getattr(instance, "agreement_title", instance.__class__.__name__)
-                rendered_docs.append((title, out_file.name))
+                rendered_docs.append((title, out_file.name, [getattr(instance, col, None) for col in index_cols]))
             except Exception as exc:
                 sys.stderr.write(f"Error processing {jf}: {exc}\n")
                 error_count += 1
 
         # build index file
         if args.html:
+            header_html = "<tr><th>Title</th>" + "".join(
+                f"<th>{html.escape(col.replace('_', ' ').title())}</th>" for col in index_cols
+            ) + "<th>File</th></tr>"
             rows = "".join(
-                f"<tr><td>{html.escape(title)}</td>"
-                f"<td><a href=\"{fname}\">{html.escape(fname)}</a></td></tr>"
-                for title, fname in rendered_docs
+                "<tr>"
+                f"<td>{html.escape(title)}</td>"
+                + "".join(f"<td>{_html(val)}</td>" for val in col_vals)
+                + f"<td><a href=\"{fname}\">{html.escape(fname)}</a></td></tr>"
+                for title, fname, col_vals in rendered_docs
             )
             index_content = (
                 "<!doctype html><html><head><meta charset='utf-8'>"
                 "<title>Documents Index</title></head><body>"
                 "<h1>Documents</h1><table>"
-                "<tr><th>Title</th><th>File</th></tr>"
-                + rows +
+                + header_html +
+                rows +
                 "</table></body></html>"
             )
             index_file = dir_path / "index.html"
         else:
-            header = "| Title | File |\n| --- | --- |\n"
-            rows = "\n".join(f"| {title} | [{fname}]({fname}) |" for title, fname in rendered_docs)
+            header_cells = ["Title", *[col.replace('_', ' ').title() for col in index_cols], "File"]
+            header = "| " + " | ".join(header_cells) + " |\n" + "| " + " | ".join("---" for _ in header_cells) + " |\n"
+            rows = "\n".join(
+                "| "
+                + " | ".join(
+                    [title] + [_md(val).replace('\n', '<br>') for val in col_vals] + [f"[{fname}]({fname})"]
+                )
+                + " |"
+                for title, fname, col_vals in rendered_docs
+            )
             index_content = f"# Documents\n\n{header}{rows}\n"
             index_file = dir_path / "index.md"
 
