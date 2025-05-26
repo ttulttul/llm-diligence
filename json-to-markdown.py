@@ -18,6 +18,7 @@ Examples
 import argparse
 import json
 import html
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -101,15 +102,61 @@ def main() -> None:
             ap.error("Multiple models available; you must specify --model.")
         Model = next(iter(models_dict.values()))
 
-    # load & validate
-    data = json.loads(Path(args.json).read_text())
-    instance = Model(**data)  # Pydantic validation
+    json_path = Path(args.json)
+    if json_path.is_dir():
+        dir_path = json_path
+        json_files = sorted(dir_path.glob("*.json"))
+        rendered_docs: list[tuple[str, str]] = []
+        error_count = 0
+        for jf in json_files:
+            try:
+                data = json.loads(jf.read_text())
+                instance = Model(**data)  # Pydantic validation
+                out_ext = ".html" if args.html else ".md"
+                out_file = jf.with_suffix(out_ext)
+                content = render_html(instance) if args.html else render_markdown(instance)
+                out_file.write_text(content, encoding="utf-8")
+                title = getattr(instance, "agreement_title", instance.__class__.__name__)
+                rendered_docs.append((title, out_file.name))
+            except Exception as exc:
+                sys.stderr.write(f"Error processing {jf}: {exc}\n")
+                error_count += 1
 
-    # output
-    if args.html:
-        print(render_html(instance))
+        # build index file
+        if args.html:
+            rows = "".join(
+                f"<tr><td>{html.escape(title)}</td>"
+                f"<td><a href=\"{fname}\">{html.escape(fname)}</a></td></tr>"
+                for title, fname in rendered_docs
+            )
+            index_content = (
+                "<!doctype html><html><head><meta charset='utf-8'>"
+                "<title>Documents Index</title></head><body>"
+                "<h1>Documents</h1><table>"
+                "<tr><th>Title</th><th>File</th></tr>"
+                + rows +
+                "</table></body></html>"
+            )
+            index_file = dir_path / "index.html"
+        else:
+            header = "| Title | File |\n| --- | --- |\n"
+            rows = "\n".join(f"| {title} | [{fname}]({fname}) |" for title, fname in rendered_docs)
+            index_content = f"# Documents\n\n{header}{rows}\n"
+            index_file = dir_path / "index.md"
+
+        index_file.write_text(index_content, encoding="utf-8")
+        print(f"Wrote {len(rendered_docs)} documents to {dir_path}. Index: {index_file} (errors: {error_count})")
+        return
     else:
-        print(render_markdown(instance))
+        # load & validate
+        data = json.loads(json_path.read_text())
+        instance = Model(**data)  # Pydantic validation
+
+        # output
+        if args.html:
+            print(render_html(instance))
+        else:
+            print(render_markdown(instance))
 
 
 if __name__ == "__main__":
