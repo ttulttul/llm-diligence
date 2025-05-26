@@ -243,10 +243,10 @@ def _log_request_details(model_name: str, system_message: str,
     """
     pretty_content = _pretty_format_user_content(user_content)
     logger.info(
-        "LLM request [provider=%s | model=%s | max_tokens=%d | temp=%.2f]\n"
+        "LLM request [provider=%s | model=%s | max_tokens=%s | temp=%.2f]\n"
         "system: %s\n"
         "%s",
-        provider, model_name, max_tokens, temperature,
+        provider, model_name or "<NONE>", max_tokens or "<NONE>", temperature or 0.0,
         system_message or "<EMPTY>",
         pretty_content,
     )
