@@ -72,6 +72,7 @@ def process_directory(
     classify_only: bool = False,
     prompt_extra: Optional[str] = None,
     crawl_limit: Optional[int] = None,
+    recurse: bool = False,
     provider: str = "anthropic",
     provider_model: str | None = None,
     chunk_size: int | None = None      # NEW
@@ -88,6 +89,7 @@ def process_directory(
         parallel: Number of parallel processes to run
         classify_only: Will be passed to run_analysis()
         prompt_extra: Will be passed to run_analysis()
+        recurse: Recurse into subdirectories when True
         
     Yields:
         Tuple containing (success: bool, file_path: str, result: Optional[DiligentizerModel], 
@@ -100,7 +102,8 @@ def process_directory(
         yield (False, crawl_dir, None, ValueError(f"Directory not found: {crawl_dir}"))
         return
         
-    pdf_files = list(crawl_path.glob('**/*.pdf'))
+    pattern = '**/*.pdf' if recurse else '*.pdf'
+    pdf_files = list(crawl_path.glob(pattern))
     if not pdf_files:
         logger.warning(f"No PDF files found in {crawl_dir}")
         yield (False, crawl_dir, None, ValueError(f"No PDF files found in {crawl_dir}"))

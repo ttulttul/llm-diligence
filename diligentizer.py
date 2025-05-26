@@ -220,6 +220,8 @@ def main():
                            help="Recursively process all PDF files in the specified directory")
         parser.add_argument("--crawl-limit", type=int, metavar="N",
                            help="Limit the crawl to process at most N PDF files")
+        parser.add_argument("--recurse", "-r", action="store_true",
+                           help="Recurse into subdirectories when crawling (default: False)")
         parser.add_argument("--parallel", type=int, default=0, metavar="N",
                            help="Process files in parallel using N processes (0 for sequential processing)")
         parser.add_argument("--sqlite", type=str, help="Path to SQLite database for storing results")
@@ -448,6 +450,7 @@ def main():
                 classify_only,
                 prompt_extra=args.prompt_extra,
                 crawl_limit=args.crawl_limit,
+                recurse=args.recurse,
                 provider=provider,
                 provider_model=provider_model,
                 chunk_size=chunk_size 
