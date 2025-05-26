@@ -72,7 +72,8 @@ def render_html(model_instance) -> str:
     )
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
-        f"<title>{title}</title></head><body><h1>{title}</h1>"
+        "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown.min.css\">"
+        f"<title>{title}</title></head><body class=\"markdown-body\"><h1>{title}</h1>"
         f"{source_html}{body}</body></html>"
     )
 
@@ -149,7 +150,8 @@ def main() -> None:
             )
             index_content = (
                 "<!doctype html><html><head><meta charset='utf-8'>"
-                "<title>Documents Index</title></head><body>"
+                "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown.min.css\">"
+                "<title>Documents Index</title></head><body class=\"markdown-body\">"
                 "<h1>Documents</h1><table>"
                 + header_html +
                 rows +
