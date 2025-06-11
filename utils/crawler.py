@@ -28,7 +28,7 @@ def process_file(args: Tuple) -> Tuple[bool, str, Optional[DiligentizerModel], O
         
         # Run analysis on this file
         result = run_analysis(
-            model_class, str(pdf_path), sqlite_path, classify_only,
+            model_class, pdf_path, sqlite_path, classify_only,
             prompt_extra=prompt_extra,
             provider=provider,
             provider_model=provider_model,
