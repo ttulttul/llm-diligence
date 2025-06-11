@@ -34,8 +34,10 @@ def format_content_for_anthropic(content):
                                                       "data": file_data }})
             else:
                 raise ValueError("Item is not a Path, dict, or str")
+        logger.debug("Anthropic formatted_content: %s", formatted_content)
         return formatted_content
     else:
+        logger.debug("Anthropic formatted_content (text): %s", content)
         return [{"type": "text", "text": content}]
 
 def cached_llm_invoke(
@@ -74,6 +76,10 @@ def cached_llm_invoke(
     def _do_call():
         anthropic_client = Anthropic(api_key=api_key)
         formatted_content = format_content_for_anthropic(user_content)
+        logger.debug("Anthropic request payload: model=%s, system=%s, messages=%s",
+                     model_name or "claude-sonnet-4-20250514",
+                     system_message,
+                     formatted_content)
         # The new Anthropic SDK (≥0.20) exposes a `messages` endpoint instead of
         # the old `chat.completions` one.  Use it if available.
         raw_resp = anthropic_client.messages.create(
