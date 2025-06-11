@@ -47,6 +47,13 @@ def cached_llm_invoke(
     response_model=None,
 ):
     """Anthropic/Claude implementation (code formerly in cached_llm_invoke)."""
+    # Normalize optional parameters ------------------------------------------------
+    if max_tokens is None:
+        # Anthropic expects a positive integer – default to 2048 if caller passed None
+        max_tokens = 2048
+    if temperature is None:
+        # Avoid TypeError inside the SDK when multiplying by ``None``
+        temperature = 0
     # Get the Anthropic API key
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
