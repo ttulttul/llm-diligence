@@ -29,9 +29,9 @@ class FilenameResponse(BaseModel):
         description="Lower-case, underscore-separated file name without extension; "
                     "do not put a date value in the filename"
     )
-    date: _dt.date = Field(
-        ...,
-        description="Document date in ISO 8601 format (YYYY-MM-DD)"
+    date: _dt.date | None = Field(
+        None,
+        description="Document date in ISO 8601 format (YYYY-MM-DD); omit if unknown"
     )
 
 # Load environment variables from .env file
