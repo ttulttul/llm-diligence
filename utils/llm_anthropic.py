@@ -1,7 +1,10 @@
 from pathlib import Path
 from typing import Any
-import os, json, base64
-import magic                            # file-type detection
+import os, json, base64, mimetypes
+try:
+    import magic                        # file-type detection via libmagic
+except Exception:
+    magic = None                        # gracefully degrade when libmagic is unavailable
 
 from anthropic import Anthropic
 from pydantic import BaseModel
@@ -28,11 +31,15 @@ def format_content_for_anthropic(content):
             elif isinstance(item, dict) and "type" in item and "text" in item:
                 formatted_content.append(item)
             elif isinstance(item, Path):
-                # Detect MIME type with python-magic; treat non-PDFs as plain text
-                try:
-                    mime_type = magic.from_file(str(item), mime=True)
-                except Exception:
-                    mime_type = None
+                # Detect MIME type (prefer python-magic, fall back to file extension)
+                mime_type = None
+                if magic is not None:
+                    try:
+                        mime_type = magic.from_file(str(item), mime=True)
+                    except Exception:
+                        mime_type = None
+                if mime_type is None:
+                    mime_type, _ = mimetypes.guess_type(item.name)
 
                 if mime_type == "application/pdf":
                     file_data = base64.standard_b64encode(item.read_bytes()).decode("utf-8")
