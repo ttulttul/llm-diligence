@@ -53,7 +53,16 @@ def cached_llm_invoke(
     _log_request_details(model_name, system_message, user_content,
                          max_tokens, temperature, provider="anthropic")
 
-    cache_key = _generate_cache_key("anthropic", model_name, system_message, user_content, max_tokens, response_model)
+    # Use a safe string (empty) when model_name is None so list-joins inside
+    # _generate_cache_key never receive a None value.
+    cache_key = _generate_cache_key(
+        "anthropic",
+        model_name or "",
+        system_message,
+        user_content,
+        max_tokens,
+        response_model,
+    )
 
     def _do_call():
         anthropic_client = Anthropic(api_key=api_key)

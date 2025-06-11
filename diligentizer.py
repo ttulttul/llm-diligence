@@ -667,7 +667,10 @@ def main():
                 # Log the basic failure information
                 logger.info(f"result: FAILURE {file_path} -> exception={exception}")
                 # Log the full stack trace at DEBUG level for easier troubleshooting
-                logger.debug(f"Stack trace for failure on {file_path}", exc_info=exception)
+                logger.debug(
+                    f"Stack trace for failure on {file_path}",
+                    exc_info=(type(exception), exception, exception.__traceback__),
+                )
                 failure_count += 1
         
         # Print summary if processing multiple files
