@@ -311,6 +311,15 @@ def main():
         
         # Configure logger with command line arguments
         configure_logger(args.log_level, args.log_file)
+
+        # ── ensure this module's logger honours the selected level ──
+        import logging as _logging
+        _numeric_level = getattr(_logging, args.log_level.upper(), None)
+        if isinstance(_numeric_level, int):
+            logger.setLevel(_numeric_level)
+            for _h in logger.handlers:
+                _h.setLevel(_numeric_level)
+
         logger.debug("Diligentizer starting up")
 
         dataroom_output_dir = Path(args.dataroom_output_dir).expanduser().resolve() \
