@@ -9,7 +9,7 @@ import shutil
 import re
 
 from pydantic import BaseModel, Field, constr
-from datetime import date
+import datetime as _dt
 
 from analysis.analyzer import AnalysisError 
 from utils.llm import ValidationError as LLMValidationError
@@ -29,7 +29,7 @@ class FilenameResponse(BaseModel):
         description="Lower-case, underscore-separated file name without extension; "
                     "do not put a date value in the filename"
     )
-    date: date = Field(
+    date: _dt.date = Field(
         ...,
         description="Document date in ISO 8601 format (YYYY-MM-DD)"
     )
