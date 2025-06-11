@@ -573,6 +573,12 @@ def main():
                         raw = str(raw)
                     name = raw.strip().strip('"').strip("'")
 
+            # Prepend document date if provided by the LLM
+            if isinstance(raw, FilenameResponse) and getattr(raw, "date", None):
+                # raw.date may be a datetime.date or ISO 8601 string; normalise to string
+                date_str = raw.date.isoformat() if hasattr(raw.date, "isoformat") else str(raw.date)
+                name = f"{date_str}_{name}"
+
             # Clean up before returning.
             name = re.sub(r"[^0-9a-zA-Z_-]+", "_", name).lower().strip("_")
             return name[:60] or "document"
