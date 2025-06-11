@@ -134,7 +134,8 @@ cache = diskcache.Cache(cache_dir)
 def _generate_cache_key(provider, model_name, system_message, user_content, max_tokens, response_model):
     """Generate a unique cache key for the request parameters."""
 
-    model_key = ":".join([provider, model_name])
+    # Ensure model_name is a string so str.join() never receives None
+    model_key = ":".join([provider, model_name or ""])
 
     # Convert user_content to a stable string representation if it's a list
     if isinstance(user_content, list):
