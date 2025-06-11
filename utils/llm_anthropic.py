@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 import os, json, base64
+import magic                            # file-type detection
 
 from anthropic import Anthropic
 from pydantic import BaseModel
@@ -27,11 +28,29 @@ def format_content_for_anthropic(content):
             elif isinstance(item, dict) and "type" in item and "text" in item:
                 formatted_content.append(item)
             elif isinstance(item, Path):
-                file_data = base64.standard_b64encode(open(item, 'rb')).decode("utf-8")
-                formatted_content.append({"type": "document",
-                                          "source": { "type": "base64",
-                                                      "media_type": "application/pdf",
-                                                      "data": file_data }})
+                # Detect MIME type with python-magic; treat non-PDFs as plain text
+                try:
+                    mime_type = magic.from_file(str(item), mime=True)
+                except Exception:
+                    mime_type = None
+
+                if mime_type == "application/pdf":
+                    file_data = base64.standard_b64encode(item.read_bytes()).decode("utf-8")
+                    formatted_content.append({
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "application/pdf",
+                            "data": file_data,
+                        },
+                    })
+                else:
+                    # Fallback: read file as UTF-8 text (best-effort) and pass as a text part
+                    try:
+                        text_data = item.read_text(encoding="utf-8", errors="ignore")
+                    except Exception:
+                        text_data = str(item)
+                    formatted_content.append({"type": "text", "text": text_data})
             else:
                 raise ValueError("Item is not a Path, dict, or str")
         logger.debug("Anthropic formatted_content: %s", formatted_content)
