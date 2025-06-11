@@ -664,8 +664,8 @@ def main():
                     logger.info(f"Model selection path: {path_str}")
                     print(f"Model selection path: {path_str}")
             else:
-                # Log the basic failure information
-                logger.info(f"result: FAILURE {file_path} -> exception={exception}")
+                # Log the basic failure information, including the exception type
+                logger.info(f"result: FAILURE {file_path} -> exception={type(exception).__name__}: {exception}")
                 # Log the full stack trace at DEBUG level for easier troubleshooting
                 logger.debug(
                     f"Stack trace for failure on {file_path}",
