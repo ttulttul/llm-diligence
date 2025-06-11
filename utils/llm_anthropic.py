@@ -17,6 +17,7 @@ from utils.llm import (                # shared helpers
     _log_llm_response,
     ValidationError as LLMValidationError,
 )
+from pydantic_core import ValidationError as CoreValidationError
 
 def format_content_for_anthropic(content):
     """Format content properly for the Anthropic API."""
@@ -127,12 +128,19 @@ def cached_llm_invoke(
         except json.JSONDecodeError as e:
             # Wrap malformed JSON errors in our common validation error type
             logger.error("Invalid JSON received from Anthropic: %s", e)
+            logger.error("Raw Anthropic content: %s", content_json)
             raise LLMValidationError(f"Invalid JSON from Anthropic model: {e}") from e
 
         from utils.llm import warn_on_empty_or_missing_fields
         warn_on_empty_or_missing_fields(raw_dict, response_model)
 
-        validated = response_model.model_validate(raw_dict) if response_model else raw_dict
+        try:
+            validated = response_model.model_validate(raw_dict) if response_model else raw_dict
+        except CoreValidationError as ve:
+            logger.error("Validation error matching response to model: %s", ve)
+            logger.error("Raw Anthropic response dict: %s",
+                         json.dumps(raw_dict, indent=2, default=str))
+            raise
         return validated
 
     return _invoke_with_cache(
