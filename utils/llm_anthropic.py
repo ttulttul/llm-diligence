@@ -65,6 +65,7 @@ def cached_llm_invoke(
             max_tokens=max_tokens,
             temperature=temperature,
         )
+        logger.debug("Raw Anthropic response: %s", raw_resp)
         # Extract JSON string returned by Claude
         content_json = (
             raw_resp.content[0].text             # typical Claude reply (list item)

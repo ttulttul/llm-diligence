@@ -230,6 +230,7 @@ def cached_llm_invoke(
             input=messages,
             text_format=simplified_response_model
         )
+        logger.debug("Raw OpenAI response: %s", response)
 
         warn_on_empty_or_missing_fields(response.output_parsed.model_dump(),
                                         response_model)
