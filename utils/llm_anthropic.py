@@ -67,8 +67,10 @@ def cached_llm_invoke(
     def _do_call():
         anthropic_client = Anthropic(api_key=api_key)
         formatted_content = format_content_for_anthropic(user_content)
-        raw_resp = anthropic_client.chat.completions.create(
-            model=model_name,
+        # The new Anthropic SDK (≥0.20) exposes a `messages` endpoint instead of
+        # the old `chat.completions` one.  Use it if available.
+        raw_resp = anthropic_client.messages.create(
+            model=model_name or "claude-3-sonnet-20240229",
             system=system_message,
             messages=[{"role": "user", "content": formatted_content}],
             max_tokens=max_tokens,
