@@ -244,3 +244,29 @@ class CorporateDissolution(CorporateDocument):
     tax_clearance_obtained: Optional[bool] = Field(None, description="Whether tax clearance was obtained")
     dissolution_approved_by: Optional[str] = Field(None, description="Who approved the dissolution")
     dissolution_filing_date: Optional[date] = Field(None, description="Date dissolution was filed with authority")
+
+
+class BoardMeetingMinutes(CorporateDocument):
+    """Minutes of a board of directors meeting.
+
+    This simplified model captures the essential elements of board meeting
+    minutes that are most relevant for corporate governance reviews and
+    due-diligence exercises.
+    """
+    meeting_datetime: datetime = Field(
+        ...,
+        description="Date and (optionally) time when the board meeting was held",
+        examples=["2025-04-09T14:30:00"]
+    )
+    attendees: List[str] = Field(
+        default_factory=list,
+        description="Names of directors and other participants present at the meeting"
+    )
+    issues_summary: str = Field(
+        ...,
+        description="Concise summary of the major issues discussed or resolved"
+    )
+    potentially_sensitive: Optional[str] = Field(
+        None,
+        description="Free-form assessment of how sensitive the meeting content might be to auditors, lawyers, or other diligence reviewers"
+    )
