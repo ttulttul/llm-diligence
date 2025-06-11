@@ -71,6 +71,10 @@ def _relax_response_model(model_cls: type):
 
     attrs['__annotations__'] = annotations
     attrs['_strip_blanks']   = _strip_blanks  # register the validator
+    # Make the dynamically-created subclass live in the *same* module as the
+    # original model.  This prevents confusing log output such as
+    # “abc.RelaxedBoardMeetingMinutesLLM” and helps introspection / pickling.
+    attrs['__module__'] = model_cls.__module__
 
     relaxed_cls = type(f"Relaxed{model_cls.__name__}", (model_cls,), attrs)
     _RELAXED_MODEL_CACHE[model_cls] = relaxed_cls
