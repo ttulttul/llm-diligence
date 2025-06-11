@@ -15,6 +15,7 @@ from utils.llm import (                # shared helpers
     _invoke_with_cache,
     _log_request_details,
     _log_llm_response,
+    ValidationError as LLMValidationError,
 )
 
 def format_content_for_anthropic(content):
@@ -121,7 +122,12 @@ def cached_llm_invoke(
             raw_resp.content[0].text             # typical Claude reply (list item)
             if hasattr(raw_resp, "content") else raw_resp
         )
-        raw_dict = json.loads(content_json)
+        try:
+            raw_dict = json.loads(content_json)
+        except json.JSONDecodeError as e:
+            # Wrap malformed JSON errors in our common validation error type
+            logger.error("Invalid JSON received from Anthropic: %s", e)
+            raise LLMValidationError(f"Invalid JSON from Anthropic model: {e}") from e
 
         from utils.llm import warn_on_empty_or_missing_fields
         warn_on_empty_or_missing_fields(raw_dict, response_model)
