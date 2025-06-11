@@ -305,8 +305,10 @@ def main():
         if provider_small_model:
             os.environ["LLM_SMALL_MODEL_NAME"] = provider_small_model
 
-        # If verbose is configured, override the log level
-        if args.verbose:
+        # If --verbose is set *and* the user did not explicitly set
+        # --log-level (it is still at the parser default of "WARNING"),
+        # elevate the level to INFO so that additional details are shown.
+        if args.verbose and parser.get_default("log_level") == args.log_level:
             args.log_level = "INFO"
         
         # Configure logger with command line arguments
