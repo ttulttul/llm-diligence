@@ -10,3 +10,4 @@ pandas>=2.0.0
 
 # PDF processing
 pdfminer.six>=20221105
+python-magic>=0.4.27
