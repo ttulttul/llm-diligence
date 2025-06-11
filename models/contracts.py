@@ -137,3 +137,64 @@ class EmploymentContract(EmploymentAgreement):
             # raise ValueError(f"Could not parse date: {value}") 
             return value # Return original if unparseable by simple formats
         return value
+
+class DataProtectionAddendum(CommercialAgreement):
+    """
+    A generic data-processing addendum (DPA) between a Controller and a Processor,
+    capturing the key GDPR-oriented terms typically found in commercial DPAs.
+    """
+
+    # Core roles
+    controller_name: str = Field(..., description="Name of the data controller")
+    processor_name: str = Field(..., description="Name of the data processor")
+
+    # Processing details (Annex A equivalents)
+    processing_purposes: List[str] = Field(..., description="Purposes for which personal data is processed")
+    personal_data_categories: List[str] = Field(..., description="Categories of personal data processed")
+    data_subject_categories: List[str] = Field(..., description="Categories of data subjects")
+    processing_duration: Optional[str] = Field(
+        None, description="Duration / retention period for the processing"
+    )
+
+    # Compliance references
+    data_protection_law: str = Field(
+        "GDPR",
+        description="Governing data-protection regime (e.g., GDPR, UK GDPR, Swiss FDP)"
+    )
+    sensitive_data_allowed: bool = Field(
+        False,
+        description="Whether special-category / sensitive data may be processed"
+    )
+
+    # Security & incident response (Annex B equivalents)
+    security_measures_summary: Optional[str] = Field(
+        None,
+        description="High-level description or reference to technical & organisational measures"
+    )
+    breach_notification_window_hours: Optional[int] = Field(
+        None,
+        description="Maximum time (in hours) for Processor to notify Controller of a personal-data breach"
+    )
+
+    # International transfers (Annex C equivalents)
+    international_transfer_mechanism: Optional[str] = Field(
+        None,
+        description="Mechanism for third-country transfers (e.g., SCCs, adequacy decision)"
+    )
+
+    # Sub-processing (Annex D equivalents)
+    sub_processors: List[str] = Field(
+        default_factory=list,
+        description="Approved sub-processors organised under the DPA"
+    )
+
+    # Post-termination
+    deletion_or_return_policy: Optional[str] = Field(
+        None, description="Obligations to delete or return personal data after termination"
+    )
+
+    # Assistance & audits
+    audit_assistance: Optional[bool] = Field(
+        None,
+        description="Whether the Processor must assist with audits / DPIAs"
+    )
