@@ -8,11 +8,12 @@ from dotenv import load_dotenv
 import shutil
 import re
 
-from pydantic import BaseModel, Field, constr     # NEW
+from pydantic import BaseModel, Field, constr
 
-from analysis.analyzer import AnalysisError   # NEW
+from analysis.analyzer import AnalysisError 
+from utils.llm import ValidationError as LLMValidationError
 
-class FilenameResponse(BaseModel):               # NEW
+class FilenameResponse(BaseModel):
     """
     Schema the LLM must return when asked for a dataroom filename.
     The value is a filesystem-safe stem (no extension).
@@ -22,7 +23,7 @@ class FilenameResponse(BaseModel):               # NEW
         min_length=1,
         max_length=60,
         pattern=r"^[0-9a-zA-Z_]+$"
-    ) = Field(..., description="Lower-case, underscore-separated file name without extension")
+    ) = Field(..., description="Lower-case, underscore-separated file name without extension; do not put a date value in the filename")
 
 # Load environment variables from .env file
 load_dotenv()
@@ -527,9 +528,11 @@ def main():
             """
             from utils.llm import cached_llm_invoke
 
+            name = None
+
             system_message = (
                 "You create short, descriptive, filesystem-safe file names for a dataroom. "
-                "Return ONLY the file name (no extension), ≤60 chars, lower-case, words "
+                "Return a JSON object encoding file name (no extension), ≤60 chars, lower-case, words "
                 "separated by underscores; use letters, numbers or underscores only."
             )
             user_content = [
@@ -539,23 +542,29 @@ def main():
                  "text": model_instance.model_dump_json(indent=2)}
             ]
 
-            raw = cached_llm_invoke(
-                model_name=provider_small_model,   # was provider_model
-                system_message=system_message,
-                user_content=user_content,
-                max_tokens=1000,
-                temperature=0,
-                provider=provider,
-                response_model=FilenameResponse
-            )
-
-            # Expect the LLM to return a FilenameResponse instance; fall back gracefully
-            if isinstance(raw, FilenameResponse):      # NEW
+            try:
+                raw = cached_llm_invoke(
+                    model_name=provider_small_model,   # was provider_model
+                    system_message=system_message,
+                    user_content=user_content,
+                    max_tokens=1000,
+                    temperature=0,
+                    provider=provider,
+                    response_model=FilenameResponse
+                )
+            except LLMValidationError as e:
+                logger.error(f"LLM validation error generating dataroom filename: {str(e)}")
                 name = raw.filename
-            else:                                      # NEW (fallback – previous logic unchanged)
-                if not isinstance(raw, str):
-                    raw = str(raw)
-                name = raw.strip().strip('"').strip("'")
+
+            if name == None:
+                if isinstance(raw, FilenameResponse): 
+                    name = raw.filename
+                else:
+                    if not isinstance(raw, str):
+                        raw = str(raw)
+                    name = raw.strip().strip('"').strip("'")
+
+            # Clean up before returning.
             name = re.sub(r"[^0-9a-zA-Z_-]+", "_", name).lower().strip("_")
             return name[:60] or "document"
 
@@ -665,7 +674,7 @@ def main():
                     print(f"Model selection path: {path_str}")
             else:
                 # Log the basic failure information, including the exception type
-                logger.info(f"result: FAILURE {file_path} -> exception={type(exception).__name__}: {exception}")
+                logger.info(f"result: FAILURE {file_path} -> exception (type={type(exception).__name__}): {str(exception)}")
                 # Log the full stack trace at DEBUG level for easier troubleshooting
                 logger.debug(
                     f"Stack trace for failure on {file_path}",
