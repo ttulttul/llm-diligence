@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any
-import os, json, base64, mimetypes
+import os, json, base64, mimetypes, re
 try:
     import magic                        # file-type detection via libmagic
 except Exception:
@@ -123,6 +123,14 @@ def cached_llm_invoke(
             raw_resp.content[0].text             # typical Claude reply (list item)
             if hasattr(raw_resp, "content") else raw_resp
         )
+        # ── cleanse Markdown code fences (```json ... ```) ──────────────────
+        if isinstance(content_json, str):
+            cj = content_json.strip()
+            if cj.startswith("```"):
+                # drop opening fence (with optional language tag) and closing fence
+                cj = re.sub(r"^```[a-zA-Z]*\n?", "", cj)
+                cj = re.sub(r"\n?```$", "", cj)
+            content_json = cj.strip()
         try:
             raw_dict = json.loads(content_json)
         except json.JSONDecodeError as e:
