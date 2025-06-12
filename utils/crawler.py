@@ -102,19 +102,28 @@ def process_directory(
         yield (False, crawl_dir, None, ValueError(f"Directory not found: {crawl_dir}"))
         return
         
-    pattern = '**/*.pdf' if recurse else '*.pdf'
-    pdf_files = list(crawl_path.glob(pattern))
+    supported_suffixes = {'.pdf', '.txt', '.text', '.md', '.rtf'}
+    if recurse:
+        pdf_files = [
+            p for p in crawl_path.rglob('*')
+            if p.is_file() and p.suffix.lower() in supported_suffixes
+        ]
+    else:
+        pdf_files = [
+            p for p in crawl_path.iterdir()
+            if p.is_file() and p.suffix.lower() in supported_suffixes
+        ]
     if not pdf_files:
-        logger.warning(f"No PDF files found in {crawl_dir}")
-        yield (False, crawl_dir, None, ValueError(f"No PDF files found in {crawl_dir}"))
+        logger.warning(f"No supported input files found in {crawl_dir}")
+        yield (False, crawl_dir, None, ValueError(f"No supported input files found in {crawl_dir}"))
         return
     
     # Apply crawl limit if specified
     if crawl_limit and crawl_limit > 0 and len(pdf_files) > crawl_limit:
-        logger.info(f"Limiting crawl to {crawl_limit} of {len(pdf_files)} PDF files found")
+        logger.info(f"Limiting crawl to {crawl_limit} of {len(pdf_files)} input files found")
         pdf_files = pdf_files[:crawl_limit]
     else:
-        logger.info(f"Found {len(pdf_files)} PDF files to process")
+        logger.info(f"Found {len(pdf_files)} input files to process")
     
     # Determine whether to use parallel processing
     if parallel > 0:
